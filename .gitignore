@@ -1,0 +1,50 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyc
+.Python
+
+# Virtual environment
+venv/
+.venv/
+env/
+.env/
+
+# Flask / SQLite
+instance/
+tiretrack.db
+*.db
+*.sqlite3
+
+# Environment variables
+.env
+.env.*
+*.env
+
+# Uploads (user data — do not commit)
+app/static/uploads/
+
+# WeasyPrint / build artifacts
+*.egg-info/
+dist/
+build/
+*.egg
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Migrations (optional — remove if you want to track migrations)
+# migrations/
+
+# Logs
+*.log
