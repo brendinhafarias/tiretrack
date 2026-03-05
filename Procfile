@@ -1,1 +1,1 @@
-web: /app/.venv/bin/gunicorn run:app --bind 0.0.0.0:$PORT --workers 2
+web: /app/.venv/bin/gunicorn run:app --bind 0.0.0.0:8080 --workers 2
