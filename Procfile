@@ -1,1 +1,1 @@
-web: python -m gunicorn run:app --bind 0.0.0.0:8080 --workers 2
+web: /app/.venv/bin/waitress-serve --host=0.0.0.0 --port=8080 run:app
