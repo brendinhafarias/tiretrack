@@ -1,0 +1,500 @@
+{% extends 'base.html' %}
+{% block title %}Pneu {{ tire.code }}{% endblock %}
+
+{% block breadcrumb %}
+<span class="text-gray-600 mx-2">/</span>
+<a href="{{ url_for('dashboard.index') }}" class="text-gray-400 hover:text-white text-sm">Dashboard</a>
+<span class="text-gray-600 mx-2">/</span>
+<span class="text-gray-300 text-sm font-mono">{{ tire.code }}</span>
+{% endblock %}
+
+{% block content %}
+<div x-data="{ tab: '{{ request.args.get('tab', 'summary') }}', obsModal: false, discardConfirm: false }" class="space-y-4">
+
+  <!-- Header card -->
+  <div class="bg-gray-800 rounded-xl p-5 border border-gray-700 flex flex-wrap items-start gap-4">
+    <div class="flex-1 min-w-0">
+      <div class="flex items-center gap-3 flex-wrap">
+        <h1 class="text-3xl font-bold font-mono text-white">{{ tire.code }}</h1>
+        <span class="text-sm px-2.5 py-1 rounded-full {{ 'bg-blue-900 text-blue-300' if tire.tire_type == 'wet' else 'bg-gray-700 text-gray-300' }}">
+          {{ 'Chuva (Wet)' if tire.tire_type == 'wet' else 'Slick' }}
+        </span>
+        <span class="text-sm px-2.5 py-1 rounded-full badge-{{ tire.status }}">
+          {{ {'available':'Disponível','mounted':'Montado','blocked':'Bloqueado','trash':'Descartado'}.get(tire.status, tire.status) }}
+        </span>
+      </div>
+      <div class="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-gray-400">
+        <span>Piloto: <strong class="text-gray-200">{{ tire.driver.name if tire.driver else '—' }}</strong></span>
+        {% if tire.round %}
+        <span>Etapa: <strong class="text-gray-200">{{ tire.round.name }}</strong></span>
+        {% endif %}
+        {% if active_set %}
+        <span>Set: <strong class="text-blue-300">{{ active_set.name }}</strong> · Posição: <strong class="text-blue-300">{{ position }}</strong></span>
+        {% endif %}
+      </div>
+    </div>
+
+    {% if current_user.can_write %}
+    <div class="flex gap-2 flex-wrap">
+      <a href="{{ url_for('tires.session_new', tire_id=tire.id) }}"
+         class="bg-red-600 hover:bg-red-700 text-white text-sm font-semibold px-4 py-2.5 rounded-lg min-h-[44px] flex items-center">
+        + Nova Sessão
+      </a>
+      <button @click="obsModal = true"
+              class="bg-gray-700 hover:bg-gray-600 text-white text-sm px-4 py-2.5 rounded-lg min-h-[44px]">
+        + Observação
+      </button>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Tabs -->
+  <div class="flex gap-1 bg-gray-900 p-1 rounded-xl w-fit">
+    {% for t_id, t_label in [('summary','Resumo'),('sessions','Sessões'),('observations','Observações'),('charts','Gráficos')] %}
+    <button @click="tab = '{{ t_id }}'"
+            :class="tab === '{{ t_id }}' ? 'bg-red-600 text-white' : 'text-gray-400 hover:text-white'"
+            class="px-4 py-2 rounded-lg text-sm font-medium transition-colors min-h-[40px]">
+      {{ t_label }}
+    </button>
+    {% endfor %}
+  </div>
+
+  <!-- ===================== TAB: Summary ===================== -->
+  <div x-show="tab === 'summary'">
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <!-- Stats -->
+      <div class="bg-gray-800 rounded-xl p-5 border border-gray-700 space-y-4">
+        <h3 class="text-sm font-semibold text-gray-300 uppercase tracking-wide">Estado Atual</h3>
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <div class="text-2xl font-bold text-white">{{ '%.0f'|format(tire.total_km or 0) }}</div>
+            <div class="text-xs text-gray-400">km total</div>
+          </div>
+          <div>
+            <div class="text-2xl font-bold text-white">{{ tire.total_laps or 0 }}</div>
+            <div class="text-xs text-gray-400">voltas totais</div>
+          </div>
+          <div>
+            <div class="text-2xl font-bold text-white">{{ sessions|length }}</div>
+            <div class="text-xs text-gray-400">sessões</div>
+          </div>
+          <div>
+            <div class="text-2xl font-bold {{ 'text-green-400' if (tire.current_twi_pct or 100) >= 70 else 'text-yellow-400' if (tire.current_twi_pct or 100) >= 40 else 'text-orange-400' if (tire.current_twi_pct or 100) >= 20 else 'text-red-400' }}">
+              {{ '%.0f'|format(tire.current_twi_pct or 100) }}%
+            </div>
+            <div class="text-xs text-gray-400">TWI restante médio</div>
+          </div>
+        </div>
+
+        {% if sessions %}
+        <div class="border-t border-gray-700 pt-3">
+          <div class="text-xs text-gray-400 mb-1">Última sessão</div>
+          {% set last = sessions[0] %}
+          <div class="text-sm text-gray-200">{{ last.date.strftime('%d/%m/%Y') }} · {{ last.track.name if last.track else '—' }} · {{ last.event_type_label }}</div>
+        </div>
+        {% endif %}
+
+        <!-- Pistas usadas -->
+        {% if tracks %}
+        <div class="border-t border-gray-700 pt-3">
+          <div class="text-xs text-gray-400 mb-2">Pistas usadas</div>
+          <div class="flex flex-wrap gap-1.5">
+            {% for track in tracks %}
+            <span class="text-xs bg-gray-700 text-gray-300 px-2 py-1 rounded">{{ track.name }}</span>
+            {% endfor %}
+          </div>
+        </div>
+        {% endif %}
+      </div>
+
+      <!-- TWI Visual -->
+      <div class="bg-gray-800 rounded-xl p-5 border border-gray-700">
+        <h3 class="text-sm font-semibold text-gray-300 uppercase tracking-wide mb-4">Gráfico TWI Visual</h3>
+        {% set twi_data = [
+          ('INT', tire.current_twi_int, tire.twi_initial_int),
+          ('C-INT', tire.current_twi_ci, tire.twi_initial_ci),
+          ('C-EXT', tire.current_twi_co, tire.twi_initial_co),
+          ('EXT', tire.current_twi_ext, tire.twi_initial_ext)
+        ] %}
+        {{ render_twi_visual(twi_data) }}
+      </div>
+    </div>
+
+    <!-- Photos -->
+    {% set photos = tire.photos.all() %}
+    {% if photos %}
+    <div class="bg-gray-800 rounded-xl p-5 border border-gray-700 mt-4">
+      <h3 class="text-sm font-semibold text-gray-300 uppercase tracking-wide mb-3">Fotos</h3>
+      <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
+        {% for ph in photos %}
+        <a href="/{{ ph.path }}" target="_blank" class="block">
+          <img src="/{{ ph.thumb_path or ph.path }}" alt="Foto do pneu"
+               class="w-full h-24 object-cover rounded-lg border border-gray-700 hover:opacity-80 transition-opacity">
+        </a>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Last 5 sessions timeline -->
+    {% if sessions %}
+    <div class="bg-gray-800 rounded-xl p-5 border border-gray-700 mt-4">
+      <h3 class="text-sm font-semibold text-gray-300 uppercase tracking-wide mb-3">Últimas Sessões</h3>
+      <div class="space-y-2">
+        {% for s in sessions[:5] %}
+        <div class="flex items-center gap-3 text-sm bg-gray-900 rounded-lg px-4 py-3">
+          <div class="text-gray-400 w-20 flex-shrink-0">{{ s.date.strftime('%d/%m/%Y') }}</div>
+          <div class="text-gray-200 flex-1 min-w-0 truncate">{{ s.track.name if s.track else '—' }}</div>
+          <div class="text-gray-400 w-16 text-center">{{ s.event_type_label }}</div>
+          <div class="font-mono text-gray-300 w-16 text-right">{{ s.laps }}v</div>
+          <div class="font-mono {{ 'text-green-400' if (s.twi_pct_avg or 100) >= 70 else 'text-yellow-400' if (s.twi_pct_avg or 100) >= 40 else 'text-orange-400' if (s.twi_pct_avg or 100) >= 20 else 'text-red-400' }} w-12 text-right">
+            {{ '%.0f'|format(s.twi_pct_avg or 100) }}%
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- ===================== TAB: Sessions ===================== -->
+  <div x-show="tab === 'sessions'">
+    {% if sessions %}
+    <div class="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="bg-gray-900 text-gray-400 text-xs uppercase border-b border-gray-700">
+              <th class="px-4 py-3 text-left">Data</th>
+              <th class="px-4 py-3 text-left">Pista</th>
+              <th class="px-4 py-3 text-left">Tipo</th>
+              <th class="px-4 py-3 text-center">Pos.</th>
+              <th class="px-4 py-3 text-right">Voltas</th>
+              <th class="px-4 py-3 text-right">Km Sess.</th>
+              <th class="px-4 py-3 text-right">Km Acum.</th>
+              <th class="px-4 py-3 text-center">INT</th>
+              <th class="px-4 py-3 text-center">C-I</th>
+              <th class="px-4 py-3 text-center">C-E</th>
+              <th class="px-4 py-3 text-center">EXT</th>
+              <th class="px-4 py-3 text-right">TWI%</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-700">
+            {% for s in sessions %}
+            <tr class="hover:bg-gray-750 transition-colors">
+              <td class="px-4 py-3 text-gray-300 whitespace-nowrap">{{ s.date.strftime('%d/%m/%Y') }}</td>
+              <td class="px-4 py-3 text-gray-200 max-w-[150px] truncate">{{ s.track.name if s.track else '—' }}</td>
+              <td class="px-4 py-3 text-gray-400">{{ s.event_type_label }}</td>
+              <td class="px-4 py-3 text-center font-mono text-gray-300">{{ s.position or '—' }}</td>
+              <td class="px-4 py-3 text-right font-mono text-gray-300">{{ s.laps }}</td>
+              <td class="px-4 py-3 text-right font-mono text-gray-300">{{ '%.1f'|format(s.km_session) }}</td>
+              <td class="px-4 py-3 text-right font-mono text-gray-300">{{ '%.1f'|format(s.km_cumulative) }}</td>
+              {% for val in [s.twi_int, s.twi_ci, s.twi_co, s.twi_ext] %}
+              <td class="px-2 py-3 text-center font-mono text-xs text-gray-200">{{ '%.1f'|format(val) }}</td>
+              {% endfor %}
+              <td class="px-4 py-3 text-right">
+                <span class="text-xs font-bold {{ 'text-green-400' if (s.twi_pct_avg or 100) >= 70 else 'text-yellow-400' if (s.twi_pct_avg or 100) >= 40 else 'text-orange-400' if (s.twi_pct_avg or 100) >= 20 else 'text-red-400' }}">
+                  {{ '%.0f'|format(s.twi_pct_avg or 100) }}%
+                </span>
+              </td>
+            </tr>
+            {% if s.notes %}
+            <tr class="bg-gray-900/50">
+              <td colspan="12" class="px-4 py-2 text-xs text-gray-400 italic">💬 {{ s.notes }}</td>
+            </tr>
+            {% endif %}
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% else %}
+    <div class="bg-gray-800 rounded-xl border border-gray-700 p-12 text-center">
+      <p class="text-gray-400">Nenhuma sessão registrada.</p>
+      {% if current_user.can_write %}
+      <a href="{{ url_for('tires.session_new', tire_id=tire.id) }}" class="inline-block mt-4 bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-xl">
+        Registrar primeira sessão
+      </a>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- ===================== TAB: Observations ===================== -->
+  <div x-show="tab === 'observations'">
+    {% if observations %}
+    <div class="space-y-3">
+      {% for obs in observations %}
+      <div class="bg-gray-800 rounded-xl p-4 border border-gray-700 flex gap-4">
+        {% if obs.photo_thumb_path %}
+        <a href="{{ url_for('static', filename=obs.photo_path) }}" target="_blank" class="flex-shrink-0">
+          <img src="{{ url_for('static', filename=obs.photo_thumb_path) }}" alt="foto" class="w-16 h-16 rounded-lg object-cover">
+        </a>
+        {% endif %}
+        <div class="flex-1 min-w-0">
+          <div class="flex items-start justify-between gap-2">
+            <p class="text-gray-200 text-sm">{{ obs.text }}</p>
+            <span class="flex-shrink-0 text-xs px-2 py-0.5 rounded-full
+                         {{ 'bg-green-800 text-green-300' if obs.action in ('ok','release') else
+                            'bg-yellow-800 text-yellow-300' if obs.action == 'monitor' else
+                            'bg-blue-800 text-blue-300' if obs.action == 'review' else
+                            'bg-red-900 text-red-300' if obs.action == 'block' else
+                            'bg-gray-700 text-gray-300' }}">
+              {{ obs.action_label }}
+            </span>
+          </div>
+          <div class="flex items-center justify-between mt-1 gap-2">
+            <span class="text-xs text-gray-500">{{ obs.author.username }} · {{ obs.created_at.strftime('%d/%m/%Y %H:%M') }}</span>
+            {% if current_user.can_write %}
+            <form method="POST" action="{{ url_for('tires.observation_delete', tire_id=tire.id, obs_id=obs.id) }}"
+                  onsubmit="return confirm('Apagar esta observação?')">
+              <button type="submit" class="text-xs text-gray-600 hover:text-red-400 transition-colors px-2 py-0.5 rounded hover:bg-gray-700">
+                Apagar
+              </button>
+            </form>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="bg-gray-800 rounded-xl border border-gray-700 p-12 text-center text-gray-400">
+      Nenhuma observação registrada.
+    </div>
+    {% endif %}
+
+    {% if current_user.can_write %}
+    <div class="mt-4">
+      <button @click="obsModal = true"
+              class="w-full sm:w-auto bg-gray-700 hover:bg-gray-600 text-white px-6 py-3 rounded-xl font-medium min-h-[48px]">
+        + Nova Observação
+      </button>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- ===================== TAB: Charts ===================== -->
+  <div x-show="tab === 'charts'">
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <!-- TWI Profile Chart — always shown -->
+      <div class="bg-gray-800 rounded-xl p-5 border border-gray-700 lg:col-span-2">
+        <h3 class="text-sm font-semibold text-gray-300 uppercase tracking-wide mb-1">Perfil de Desgaste TWI (mm)</h3>
+        <p class="text-xs text-gray-500 mb-4">
+          {% if chart_profiles %}Cada linha representa uma sessão — últimas {{ chart_profiles|length }}{% else %}Pneu sem sessões — exibindo perfil inicial{% endif %}
+        </p>
+        <canvas id="twiProfileChart" height="100"></canvas>
+      </div>
+
+      {% if sessions %}
+      <!-- Km per track bar chart -->
+      <div class="bg-gray-800 rounded-xl p-5 border border-gray-700">
+        <h3 class="text-sm font-semibold text-gray-300 uppercase tracking-wide mb-4">Km por Pista</h3>
+        <canvas id="kmTrackChart" height="200"></canvas>
+      </div>
+
+      <!-- TWI visual for current state -->
+      <div class="bg-gray-800 rounded-xl p-5 border border-gray-700">
+        <h3 class="text-sm font-semibold text-gray-300 uppercase tracking-wide mb-4">Estado Atual TWI</h3>
+        {% set twi_data = [
+          ('INT', tire.current_twi_int, tire.twi_initial_int),
+          ('C-INT', tire.current_twi_ci, tire.twi_initial_ci),
+          ('C-EXT', tire.current_twi_co, tire.twi_initial_co),
+          ('EXT', tire.current_twi_ext, tire.twi_initial_ext)
+        ] %}
+        {{ render_twi_visual(twi_data) }}
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- ===================== Observation Modal ===================== -->
+  <div x-show="obsModal" x-cloak
+       class="fixed inset-0 bg-black/70 z-50 flex items-end sm:items-center justify-center p-4"
+       @click.self="obsModal = false">
+    <div class="bg-gray-800 rounded-2xl p-6 w-full max-w-lg border border-gray-700 max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-lg font-bold text-white">Nova Observação</h3>
+        <button @click="obsModal = false" class="text-gray-400 hover:text-white text-2xl leading-none">✕</button>
+      </div>
+
+      <form method="POST" action="{{ url_for('tires.observation_new', tire_id=tire.id) }}" enctype="multipart/form-data" class="space-y-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-300 mb-2">Observação *</label>
+          <textarea name="text" required rows="3"
+                    class="w-full px-4 py-3 bg-gray-900 border border-gray-600 rounded-xl text-white placeholder-gray-500
+                           focus:outline-none focus:border-red-500 text-base resize-none"
+                    placeholder="Descreva o estado do pneu..."></textarea>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-300 mb-2">Ação</label>
+          <select name="action"
+                  class="w-full px-4 py-3 bg-gray-900 border border-gray-600 rounded-xl text-white
+                         focus:outline-none focus:border-red-500 text-base min-h-[48px]">
+            <option value="ok">OK — continuar normalmente</option>
+            <option value="monitor">Monitorar</option>
+            <option value="review">Revisar</option>
+            <option value="block">Bloquear (muda status para bloqueado)</option>
+            <option value="release">Liberar (remove bloqueio)</option>
+            <option value="discard">Descartar (muda status para lixo)</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-300 mb-2">Foto (opcional, máx 10MB)</label>
+          <input type="file" name="photo" accept=".jpg,.jpeg,.png,.webp"
+                 class="w-full text-sm text-gray-300 bg-gray-900 border border-gray-600 rounded-xl px-3 py-2.5
+                        file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:bg-red-600 file:text-white file:cursor-pointer min-h-[44px]">
+        </div>
+
+        <div class="flex gap-3 pt-2">
+          <button type="button" @click="obsModal = false"
+                  class="flex-1 py-3 bg-gray-700 hover:bg-gray-600 text-white font-medium rounded-xl min-h-[48px]">
+            Cancelar
+          </button>
+          <button type="submit"
+                  class="flex-1 py-3 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-xl min-h-[48px]">
+            Salvar
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const profileData = {{ chart_profiles | tojson }};
+const chartInitial = {{ chart_initial | tojson }};
+const posLabels = ['INT', 'C-INT', 'C-EXT', 'EXT'];
+const sessionColors = ['#3b82f6', '#10b981', '#f59e0b', '#a78bfa', '#f472b6'];
+
+// Build datasets: initial (dashed) + one line per session
+const profileDatasets = [];
+
+// Initial reference
+profileDatasets.push({
+  label: 'Referência inicial',
+  data: chartInitial,
+  borderColor: '#6b7280',
+  backgroundColor: 'transparent',
+  borderDash: [6, 3],
+  borderWidth: 2,
+  pointRadius: 5,
+  tension: 0.3,
+});
+
+// Session lines
+profileData.forEach((s, i) => {
+  profileDatasets.push({
+    label: s.label,
+    data: s.values,
+    borderColor: sessionColors[i % sessionColors.length],
+    backgroundColor: 'transparent',
+    borderWidth: 2,
+    pointRadius: 5,
+    pointHoverRadius: 7,
+    tension: 0.3,
+  });
+});
+
+new Chart(document.getElementById('twiProfileChart'), {
+  type: 'line',
+  data: { labels: posLabels, datasets: profileDatasets },
+  options: {
+    responsive: true,
+    plugins: {
+      legend: { labels: { color: '#9ca3af', boxWidth: 20 } },
+      tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: ${ctx.parsed.y != null ? ctx.parsed.y.toFixed(1) + ' mm' : '—'}` } }
+    },
+    scales: {
+      x: {
+        ticks: { color: '#9ca3af', font: { size: 13, weight: 'bold' } },
+        grid: { color: '#374151' }
+      },
+      y: {
+        ticks: { color: '#6b7280', callback: v => v.toFixed(1) + ' mm' },
+        grid: { color: '#374151' }
+      }
+    }
+  }
+});
+
+// Km per track chart (only when sessions exist)
+const kmByTrack = {{ km_by_track | tojson }};
+if (kmByTrack.length && document.getElementById('kmTrackChart')) {
+  new Chart(document.getElementById('kmTrackChart'), {
+    type: 'bar',
+    data: {
+      labels: kmByTrack.map(r => r[0]),
+      datasets: [{
+        label: 'Km',
+        data: kmByTrack.map(r => parseFloat(r[1]).toFixed(1)),
+        backgroundColor: '#dc2626',
+        borderRadius: 6,
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: '#6b7280', maxRotation: 30 }, grid: { color: '#374151' } },
+        y: { ticks: { color: '#6b7280' }, grid: { color: '#374151' } }
+      }
+    }
+  });
+}
+</script>
+{% endblock %}
+
+{% macro render_twi_visual(twi_data) %}
+<div class="space-y-2">
+  <!-- Labels row -->
+  <div class="grid grid-cols-4 gap-1 text-center text-xs text-gray-400">
+    {% for label, curr, init in twi_data %}
+    <div>{{ label }}</div>
+    {% endfor %}
+  </div>
+
+  <!-- Tire visual bands -->
+  <div class="grid grid-cols-4 gap-1 h-32">
+    {% for label, curr, init in twi_data %}
+    {% set pct = ((curr / init) * 100) if (curr and init and init > 0) else 100 %}
+    {% set clamped = [pct, 100]|min %}
+    <div class="relative bg-gray-900 rounded-lg overflow-hidden border border-gray-700 flex flex-col justify-end">
+      <!-- Rubber block with proportional height -->
+      <div class="w-full rounded-b transition-all"
+           style="height: {{ clamped }}%;
+                  background: {{ '#16a34a' if pct >= 70 else '#ca8a04' if pct >= 40 else '#ea580c' if pct >= 20 else '#dc2626' }};">
+      </div>
+      <!-- Reading overlay -->
+      <div class="absolute inset-0 flex flex-col items-center justify-center">
+        <div class="text-xs font-bold text-white drop-shadow font-mono">{{ '%.1f'|format(curr) if curr else '—' }}</div>
+        <div class="text-xs text-white/80 drop-shadow">{{ '%.0f'|format(pct) }}%</div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- mm readings row -->
+  <div class="grid grid-cols-4 gap-1 text-center">
+    {% for label, curr, init in twi_data %}
+    {% set pct = ((curr / init) * 100) if (curr and init and init > 0) else 100 %}
+    <div class="text-xs {{ 'text-green-400' if pct >= 70 else 'text-yellow-400' if pct >= 40 else 'text-orange-400' if pct >= 20 else 'text-red-400' }}">
+      {{ '%.1f'|format(curr) if curr else '—' }}mm
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- Color legend -->
+  <div class="flex flex-wrap gap-3 justify-center text-xs text-gray-400 pt-1">
+    <span class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-green-600 inline-block"></span> ≥70% OK</span>
+    <span class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-yellow-600 inline-block"></span> 40-69% Atenção</span>
+    <span class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-orange-600 inline-block"></span> 20-39% Alerta</span>
+    <span class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-red-600 inline-block"></span> &lt;20% Crítico</span>
+  </div>
+</div>
+{% endmacro %}

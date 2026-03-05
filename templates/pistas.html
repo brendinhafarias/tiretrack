@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+{% block title %}Pistas - Tire Management{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col">
+        <h1><i class="bi bi-sign-turn-right"></i> Pistas</h1>
+        <p class="text-muted">Cadastro de pistas e autódromos</p>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Lista de Pistas</h5>
+            </div>
+            <div class="card-body">
+                {% if pistas %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Nome</th>
+                                <th>KM por Volta</th>
+                                <th>Localização</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for pista in pistas %}
+                            <tr>
+                                <td><strong>{{ pista.nome }}</strong></td>
+                                <td>{{ pista.km_por_volta }} km</td>
+                                <td>{{ pista.localizacao }}</td>
+                                <td>
+                                    <button type="button" class="btn btn-sm btn-outline-primary" 
+                                            data-bs-toggle="modal" 
+                                            data-bs-target="#editModal{{ pista.id }}">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+                                    <form method="POST" action="{{ url_for('remover_pista', pista_id=pista.id) }}" 
+                                          style="display: inline;"
+                                          onsubmit="return confirm('Remover pista {{ pista.nome }}?');">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+
+                            <!-- Modal Editar -->
+                            <div class="modal fade" id="editModal{{ pista.id }}">
+                                <div class="modal-dialog">
+                                    <div class="modal-content">
+                                        <form method="POST" action="{{ url_for('editar_pista', pista_id=pista.id) }}">
+                                            <div class="modal-header">
+                                                <h5 class="modal-title">Editar {{ pista.nome }}</h5>
+                                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                            </div>
+                                            <div class="modal-body">
+                                                <div class="mb-3">
+                                                    <label class="form-label">KM por Volta</label>
+                                                    <input type="number" name="km_por_volta" class="form-control" 
+                                                           step="0.001" value="{{ pista.km_por_volta }}" required>
+                                                </div>
+                                                <div class="mb-3">
+                                                    <label class="form-label">Localização</label>
+                                                    <input type="text" name="localizacao" class="form-control" 
+                                                           value="{{ pista.localizacao }}" required>
+                                                </div>
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                                <button type="submit" class="btn btn-primary">Salvar</button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="alert alert-info mb-0">
+                    <i class="bi bi-info-circle"></i> Nenhuma pista cadastrada.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-plus-circle"></i> Nova Pista</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    <div class="mb-3">
+                        <label class="form-label">Nome <span class="text-danger">*</span></label>
+                        <input type="text" name="nome" class="form-control" 
+                               placeholder="Ex: Interlagos" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">KM por Volta <span class="text-danger">*</span></label>
+                        <input type="number" name="km_por_volta" class="form-control" 
+                               step="0.001" placeholder="Ex: 4.309" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Localização <span class="text-danger">*</span></label>
+                        <input type="text" name="localizacao" class="form-control" 
+                               placeholder="Ex: São Paulo-SP" required>
+                    </div>
+                    <button type="submit" class="btn btn-success w-100">
+                        <i class="bi bi-check-circle"></i> Cadastrar
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,162 @@
+{% extends 'base.html' %}
+{% block title %}Superadmin{% endblock %}
+{% block breadcrumb %}
+<span class="text-gray-600 mx-2">/</span>
+<span class="text-gray-300 text-sm">Superadmin</span>
+{% endblock %}
+
+{% block content %}
+<div x-data="{ tab: 'teams' }" class="space-y-5">
+  <h1 class="text-2xl font-bold text-white">Painel Superadmin</h1>
+
+  <div class="flex gap-1 bg-gray-900 p-1 rounded-xl w-fit">
+    {% for t_id, t_label in [('teams','Equipes'),('users','Usuários'),('tracks','Pistas Globais')] %}
+    <button @click="tab = '{{ t_id }}'"
+            :class="tab === '{{ t_id }}' ? 'bg-red-600 text-white' : 'text-gray-400 hover:text-white'"
+            class="px-4 py-2 rounded-lg text-sm font-medium transition-colors min-h-[40px]">
+      {{ t_label }}
+    </button>
+    {% endfor %}
+  </div>
+
+  <!-- Teams -->
+  <div x-show="tab === 'teams'" class="space-y-4">
+    <div class="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden">
+      <table class="w-full text-sm">
+        <thead><tr class="bg-gray-900 text-gray-400 text-xs uppercase border-b border-gray-700">
+          <th class="px-4 py-3 text-left">Nome</th>
+          <th class="px-4 py-3 text-left">Slug</th>
+          <th class="px-4 py-3 text-center">Status</th>
+          <th class="px-4 py-3 text-right">Ação</th>
+        </tr></thead>
+        <tbody class="divide-y divide-gray-700">
+          {% for t in teams %}
+          <tr class="hover:bg-gray-750">
+            <td class="px-4 py-3 font-medium text-gray-200">{{ t.name }}</td>
+            <td class="px-4 py-3 text-gray-400 font-mono">{{ t.slug }}</td>
+            <td class="px-4 py-3 text-center">
+              <span class="text-xs px-2 py-0.5 rounded-full {{ 'bg-green-900 text-green-300' if t.is_active else 'bg-gray-700 text-gray-400' }}">
+                {{ 'Ativa' if t.is_active else 'Inativa' }}
+              </span>
+            </td>
+            <td class="px-4 py-3 text-right">
+              <form method="POST" action="{{ url_for('admin.team_toggle', team_id=t.id) }}" class="inline">
+                <button type="submit" class="text-xs bg-gray-700 hover:bg-gray-600 text-white px-3 py-1.5 rounded-lg">
+                  {{ 'Desativar' if t.is_active else 'Ativar' }}
+                </button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div class="bg-gray-800 rounded-xl p-5 border border-gray-700">
+      <h3 class="font-semibold text-gray-200 mb-4">Criar Equipe</h3>
+      <form method="POST" action="{{ url_for('admin.team_new') }}" class="flex flex-wrap gap-3">
+        <input type="text" name="name" required placeholder="Nome da equipe"
+               class="flex-1 min-w-[200px] px-4 py-3 bg-gray-900 border border-gray-600 rounded-xl text-white focus:outline-none focus:border-red-500 min-h-[48px]">
+        <input type="text" name="slug" required placeholder="slug (ex: equipe-a)"
+               class="flex-1 min-w-[150px] px-4 py-3 bg-gray-900 border border-gray-600 rounded-xl text-white focus:outline-none focus:border-red-500 min-h-[48px]">
+        <button type="submit" class="bg-red-600 hover:bg-red-700 text-white font-semibold px-6 py-3 rounded-xl min-h-[48px]">Criar</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Users -->
+  <div x-show="tab === 'users'" class="space-y-4">
+    <div class="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden">
+      <table class="w-full text-sm">
+        <thead><tr class="bg-gray-900 text-gray-400 text-xs uppercase border-b border-gray-700">
+          <th class="px-4 py-3 text-left">Username</th>
+          <th class="px-4 py-3 text-left">Equipe</th>
+          <th class="px-4 py-3 text-left">Papel</th>
+          <th class="px-4 py-3 text-center">Status</th>
+          <th class="px-4 py-3 text-right">Ação</th>
+        </tr></thead>
+        <tbody class="divide-y divide-gray-700">
+          {% for u in users %}
+          <tr class="hover:bg-gray-750">
+            <td class="px-4 py-3 font-medium text-gray-200">{{ u.username }}</td>
+            <td class="px-4 py-3 text-gray-400">{{ u.team.name if u.team else '—' }}</td>
+            <td class="px-4 py-3 text-gray-400">{{ u.role }}</td>
+            <td class="px-4 py-3 text-center">
+              <span class="text-xs px-2 py-0.5 rounded-full {{ 'bg-green-900 text-green-300' if u.is_active else 'bg-gray-700 text-gray-400' }}">
+                {{ 'Ativo' if u.is_active else 'Inativo' }}
+              </span>
+            </td>
+            <td class="px-4 py-3 text-right">
+              {% if u.id != current_user.id %}
+              <form method="POST" action="{{ url_for('admin.user_toggle', user_id=u.id) }}" class="inline">
+                <button type="submit" class="text-xs bg-gray-700 hover:bg-gray-600 text-white px-3 py-1.5 rounded-lg">
+                  {{ 'Desativar' if u.is_active else 'Ativar' }}
+                </button>
+              </form>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div class="bg-gray-800 rounded-xl p-5 border border-gray-700">
+      <h3 class="font-semibold text-gray-200 mb-4">Criar Usuário</h3>
+      <form method="POST" action="{{ url_for('admin.user_new') }}" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <input type="text" name="username" required placeholder="Username" class="px-4 py-3 bg-gray-900 border border-gray-600 rounded-xl text-white focus:outline-none focus:border-red-500 min-h-[48px]">
+        <input type="email" name="email" required placeholder="E-mail" class="px-4 py-3 bg-gray-900 border border-gray-600 rounded-xl text-white focus:outline-none focus:border-red-500 min-h-[48px]">
+        <input type="password" name="password" required placeholder="Senha" class="px-4 py-3 bg-gray-900 border border-gray-600 rounded-xl text-white focus:outline-none focus:border-red-500 min-h-[48px]">
+        <select name="role" class="px-4 py-3 bg-gray-900 border border-gray-600 rounded-xl text-white focus:outline-none focus:border-red-500 min-h-[48px]">
+          <option value="team_user">Usuário da equipe</option>
+          <option value="team_admin">Admin da equipe</option>
+          <option value="viewer">Somente leitura</option>
+          <option value="superadmin">Superadmin</option>
+        </select>
+        <select name="team_id" class="px-4 py-3 bg-gray-900 border border-gray-600 rounded-xl text-white focus:outline-none focus:border-red-500 min-h-[48px] sm:col-span-2">
+          <option value="">Sem equipe (superadmin)</option>
+          {% for t in teams %}
+          <option value="{{ t.id }}">{{ t.name }}</option>
+          {% endfor %}
+        </select>
+        <div class="sm:col-span-2">
+          <button type="submit" class="bg-red-600 hover:bg-red-700 text-white font-semibold px-6 py-3 rounded-xl min-h-[48px]">Criar Usuário</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Tracks -->
+  <div x-show="tab === 'tracks'" class="space-y-4">
+    <div class="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden">
+      <table class="w-full text-sm">
+        <thead><tr class="bg-gray-900 text-gray-400 text-xs uppercase border-b border-gray-700">
+          <th class="px-4 py-3 text-left">Nome</th>
+          <th class="px-4 py-3 text-right">Km/volta</th>
+          <th class="px-4 py-3 text-left">Localização</th>
+        </tr></thead>
+        <tbody class="divide-y divide-gray-700">
+          {% for t in tracks %}
+          <tr class="hover:bg-gray-750">
+            <td class="px-4 py-3 font-medium text-gray-200">{{ t.name }}</td>
+            <td class="px-4 py-3 text-right font-mono text-gray-300">{{ '%.3f'|format(t.km_per_lap) if t.km_per_lap else '—' }}</td>
+            <td class="px-4 py-3 text-gray-400">{{ t.location or '—' }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div class="bg-gray-800 rounded-xl p-5 border border-gray-700">
+      <h3 class="font-semibold text-gray-200 mb-4">Adicionar Pista Global</h3>
+      <form method="POST" action="{{ url_for('admin.track_new') }}" class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <input type="text" name="name" required placeholder="Nome da pista" class="px-4 py-3 bg-gray-900 border border-gray-600 rounded-xl text-white focus:outline-none focus:border-red-500 min-h-[48px]">
+        <input type="number" name="km_per_lap" step="0.001" inputmode="decimal" placeholder="km por volta" class="px-4 py-3 bg-gray-900 border border-gray-600 rounded-xl text-white focus:outline-none focus:border-red-500 min-h-[48px]">
+        <input type="text" name="location" placeholder="Localização" class="px-4 py-3 bg-gray-900 border border-gray-600 rounded-xl text-white focus:outline-none focus:border-red-500 min-h-[48px]">
+        <input type="hidden" name="is_global" value="on">
+        <div class="sm:col-span-3">
+          <button type="submit" class="bg-red-600 hover:bg-red-700 text-white font-semibold px-6 py-3 rounded-xl min-h-[48px]">Adicionar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

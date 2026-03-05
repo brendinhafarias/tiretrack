@@ -1,0 +1,18 @@
+{% extends 'base.html' %}
+{% block title %}Superadmin{% endblock %}
+{% block content %}
+<h1 class="text-2xl font-bold text-white mb-6">Painel Superadmin</h1>
+<div class="grid gap-4">
+  {% for team in teams %}
+  <div class="bg-gray-800 rounded-xl p-4 border border-gray-700 flex items-center justify-between">
+    <div>
+      <div class="font-bold text-white">{{ team.name }}</div>
+      <div class="text-xs text-gray-400">{{ team.slug }} · {{ 'Ativa' if team.is_active else 'Inativa' }}</div>
+    </div>
+    <a href="{{ url_for('admin.index') }}" class="text-sm bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg">Gerenciar</a>
+  </div>
+  {% else %}
+  <div class="text-gray-400 text-center py-12">Nenhuma equipe cadastrada. <a href="{{ url_for('admin.index') }}" class="text-red-400">Criar equipe</a></div>
+  {% endfor %}
+</div>
+{% endblock %}

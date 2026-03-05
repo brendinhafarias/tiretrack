@@ -1,0 +1,276 @@
+{% extends "base.html" %}
+{% block title %}Sets de Pneus - Tire Management{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col">
+        <h1><i class="bi bi-grid-3x3"></i> Sets de Pneus</h1>
+        <p class="text-muted">Monte e gerencie conjuntos de 4 pneus</p>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <!-- Sets Ativos -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-check-circle"></i> Sets Ativos</h5>
+            </div>
+            <div class="card-body">
+                {% if sets_ativos %}
+                {% for set in sets_ativos %}
+                <div class="card mb-3">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h6 class="mb-0">{{ set.nome }}</h6>
+                        <div>
+                            <small class="text-muted">{{ set.carro.nome }} - {{ set.data_montagem.strftime('%d/%m/%Y') }}</small>
+                            <form method="POST" action="{{ url_for('desmontar_set', set_id=set.id) }}" 
+                                  style="display: inline;" class="ms-2"
+                                  onsubmit="return confirm('Desmontar set {{ set.nome }}?');">
+                                <button type="submit" class="btn btn-sm btn-danger">
+                                    <i class="bi bi-x-circle"></i> Desmontar
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="row text-center">
+                            <div class="col-md-3">
+                                <strong>DE</strong><br>
+                                {% if set.pneu_de %}
+                                {{ set.pneu_de.nome }}<br>
+                                <small class="text-muted">{{ "%.0f"|format(set.pneu_de.quilometragem_atual) }} km</small>
+                                {% else %}
+                                <span class="text-muted">N/A</span>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-3">
+                                <strong>DD</strong><br>
+                                {% if set.pneu_dd %}
+                                {{ set.pneu_dd.nome }}<br>
+                                <small class="text-muted">{{ "%.0f"|format(set.pneu_dd.quilometragem_atual) }} km</small>
+                                {% else %}
+                                <span class="text-muted">N/A</span>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-3">
+                                <strong>TE</strong><br>
+                                {% if set.pneu_te %}
+                                {{ set.pneu_te.nome }}<br>
+                                <small class="text-muted">{{ "%.0f"|format(set.pneu_te.quilometragem_atual) }} km</small>
+                                {% else %}
+                                <span class="text-muted">N/A</span>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-3">
+                                <strong>TD</strong><br>
+                                {% if set.pneu_td %}
+                                {{ set.pneu_td.nome }}<br>
+                                <small class="text-muted">{{ "%.0f"|format(set.pneu_td.quilometragem_atual) }} km</small>
+                                {% else %}
+                                <span class="text-muted">N/A</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+                {% else %}
+                <div class="alert alert-info mb-0">
+                    <i class="bi bi-info-circle"></i> Nenhum set montado no momento.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Sets Desmontados -->
+        {% if sets_desmontados %}
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-archive"></i> Histórico de Sets</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Nome</th>
+                                <th>Carro</th>
+                                <th>Data Montagem</th>
+                                <th>Pneus</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for set in sets_desmontados %}
+                            <tr>
+                                <td>{{ set.nome }}</td>
+                                <td>{{ set.carro.nome }}</td>
+                                <td>{{ set.data_montagem.strftime('%d/%m/%Y') }}</td>
+                                <td>
+                                    <small>
+                                        {% if set.pneu_de %}{{ set.pneu_de.nome }}{% endif %} | 
+                                        {% if set.pneu_dd %}{{ set.pneu_dd.nome }}{% endif %} | 
+                                        {% if set.pneu_te %}{{ set.pneu_te.nome }}{% endif %} | 
+                                        {% if set.pneu_td %}{{ set.pneu_td.nome }}{% endif %}
+                                    </small>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="col-md-4">
+        <!-- Montar Novo Set -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-plus-circle"></i> Montar Novo Set</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" id="formSet" onsubmit="return validarSet()">
+                    <div class="mb-3">
+                        <label class="form-label">Nome do Set <span class="text-danger">*</span></label>
+                        <input type="text" name="nome_set" class="form-control" 
+                               placeholder="Ex: Set Corrida 1" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Carro <span class="text-danger">*</span></label>
+                        <select name="carro_id" class="form-select" required>
+                            <option value="">Selecione</option>
+                            {% for carro in carros %}
+                            <option value="{{ carro.id }}">{{ carro.nome }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <hr>
+
+                    <h6 class="mb-3">Selecionar Pneus <span class="text-danger">*</span></h6>
+
+                    <div class="alert alert-warning alert-sm py-2 px-3 mb-3">
+                        <small><i class="bi bi-exclamation-triangle"></i> Cada pneu só pode ser usado uma vez!</small>
+                    </div>
+
+                    <div class="mb-2">
+                        <label class="form-label"><small>Dianteiro Esquerdo</small></label>
+                        <select name="pneu_de" class="form-select form-select-sm pneu-select" required>
+                            <option value="">Selecione</option>
+                            {% for pneu in pneus_disponiveis %}
+                            <option value="{{ pneu.id }}">
+                                {{ pneu.nome }} - {{ pneu.carro.nome }} ({{ "%.0f"|format(pneu.quilometragem_atual) }}km)
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="mb-2">
+                        <label class="form-label"><small>Dianteiro Direito</small></label>
+                        <select name="pneu_dd" class="form-select form-select-sm pneu-select" required>
+                            <option value="">Selecione</option>
+                            {% for pneu in pneus_disponiveis %}
+                            <option value="{{ pneu.id }}">
+                                {{ pneu.nome }} - {{ pneu.carro.nome }} ({{ "%.0f"|format(pneu.quilometragem_atual) }}km)
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="mb-2">
+                        <label class="form-label"><small>Traseiro Esquerdo</small></label>
+                        <select name="pneu_te" class="form-select form-select-sm pneu-select" required>
+                            <option value="">Selecione</option>
+                            {% for pneu in pneus_disponiveis %}
+                            <option value="{{ pneu.id }}">
+                                {{ pneu.nome }} - {{ pneu.carro.nome }} ({{ "%.0f"|format(pneu.quilometragem_atual) }}km)
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label"><small>Traseiro Direito</small></label>
+                        <select name="pneu_td" class="form-select form-select-sm pneu-select" required>
+                            <option value="">Selecione</option>
+                            {% for pneu in pneus_disponiveis %}
+                            <option value="{{ pneu.id }}">
+                                {{ pneu.nome }} - {{ pneu.carro.nome }} ({{ "%.0f"|format(pneu.quilometragem_atual) }}km)
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    {% if pneus_disponiveis %}
+                    <button type="submit" class="btn btn-success w-100">
+                        <i class="bi bi-check-circle"></i> Montar Set
+                    </button>
+                    {% else %}
+                    <div class="alert alert-warning mb-0">
+                        <small>Sem pneus disponíveis</small>
+                    </div>
+                    {% endif %}
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Validação no frontend para impedir pneus duplicados
+function validarSet() {
+    const pneuDE = document.querySelector('select[name="pneu_de"]').value;
+    const pneuDD = document.querySelector('select[name="pneu_dd"]').value;
+    const pneuTE = document.querySelector('select[name="pneu_te"]').value;
+    const pneuTD = document.querySelector('select[name="pneu_td"]').value;
+
+    const pneus = [pneuDE, pneuDD, pneuTE, pneuTD];
+    const pneusUnicos = [...new Set(pneus)];
+
+    if (pneus.length !== pneusUnicos.length) {
+        alert('❌ Erro: Você selecionou o mesmo pneu em múltiplas posições!\n\nCada pneu só pode ser usado uma vez no set.');
+        return false;
+    }
+
+    return true;
+}
+
+// Destacar visualmente quando um pneu é selecionado em múltiplas posições
+document.querySelectorAll('.pneu-select').forEach(select => {
+    select.addEventListener('change', function() {
+        // Remover destaque de todos
+        document.querySelectorAll('.pneu-select').forEach(s => {
+            s.classList.remove('border-danger');
+        });
+
+        // Verificar duplicatas
+        const valores = Array.from(document.querySelectorAll('.pneu-select'))
+            .map(s => s.value)
+            .filter(v => v !== '');
+
+        const duplicatas = valores.filter((item, index) => valores.indexOf(item) !== index);
+
+        if (duplicatas.length > 0) {
+            document.querySelectorAll('.pneu-select').forEach(s => {
+                if (duplicatas.includes(s.value)) {
+                    s.classList.add('border-danger');
+                }
+            });
+        }
+    });
+});
+</script>
+
+<style>
+.border-danger {
+    border: 2px solid #dc3545 !important;
+}
+
+.alert-sm {
+    font-size: 0.875rem;
+}
+</style>
+{% endblock %}

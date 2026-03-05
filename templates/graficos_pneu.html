@@ -1,0 +1,476 @@
+{% extends "base.html" %}
+{% block title %}Gráficos - {{ pneu.nome }} - Tire Management{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col">
+        <h1><i class="bi bi-graph-up"></i> Análise de Desgaste: {{ pneu.nome }}</h1>
+        <p class="text-muted">
+            <strong>Carro:</strong> {{ pneu.carro.nome }} | 
+            <strong>Status:</strong> {{ pneu.status }} |
+            <strong>Profundidade Inicial:</strong> {{ "%.1f"|format(pneu.profundidade_inicial) }} mm
+        </p>
+    </div>
+    <div class="col-auto">
+        <a href="{{ url_for('historico_pneu', pneu_id=pneu.id) }}" class="btn btn-secondary">
+            <i class="bi bi-clock-history"></i> Ver Histórico
+        </a>
+        <a href="{{ url_for('visualizar_pneus') }}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Voltar
+        </a>
+    </div>
+</div>
+
+<!-- Controles -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-body">
+                <h6 class="card-title">Visualizar Desgaste Por:</h6>
+                <div class="btn-group w-100" role="group">
+                    <input type="radio" class="btn-check" name="tipo_eixo" id="por_medicao" value="medicao" checked>
+                    <label class="btn btn-outline-primary" for="por_medicao" onclick="atualizarGraficos('medicao')">
+                        <i class="bi bi-list-ol"></i> Por Medição
+                    </label>
+
+                    <input type="radio" class="btn-check" name="tipo_eixo" id="por_km" value="km">
+                    <label class="btn btn-outline-primary" for="por_km" onclick="atualizarGraficos('km')">
+                        <i class="bi bi-speedometer2"></i> Por Quilometragem
+                    </label>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-body">
+                <h6 class="card-title">Resumo do Pneu:</h6>
+                <p class="mb-1"><strong>Total de Medições:</strong> {{ medicoes|length }}</p>
+                <p class="mb-1"><strong>KM Acumulada:</strong> {{ "%.1f"|format(pneu.quilometragem_atual) }} km</p>
+                <p class="mb-0">
+                    <strong>Desgaste Total:</strong> 
+                    {% if medicoes %}
+                        {% set desgaste = pneu.profundidade_inicial - medicoes[-1].profundidade_media %}
+                        {{ "%.1f"|format(desgaste) }} mm 
+                        ({{ "%.1f"|format((desgaste / pneu.profundidade_inicial * 100)) }}%)
+                    {% else %}
+                        0 mm (0%)
+                    {% endif %}
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Gráfico 1: Perfil do Pneu (Vista Frontal) -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="bi bi-circle"></i> Perfil do Pneu - Desgaste por Posição (% da Medida Inicial)</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="graficoPerfilPneu" height="80"></canvas>
+                <div class="text-center mt-3">
+                    <small class="text-muted">
+                        <i class="bi bi-info-circle"></i> 
+                        Vista frontal do pneu mostrando desgaste em cada posição em relação à profundidade inicial
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Gráfico 2: Desgaste ao Longo do Tempo/KM -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0"><i class="bi bi-graph-down"></i> Evolução do Desgaste ao Longo do Tempo</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="graficoDesgasteTempo" height="70"></canvas>
+                <div class="text-center mt-3">
+                    <small class="text-muted">
+                        <i class="bi bi-info-circle"></i> 
+                        Evolução da profundidade em cada posição
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Gráfico 3: Profundidade Média -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0"><i class="bi bi-activity"></i> Profundidade Média ao Longo do Tempo</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="graficoProfundidadeMedia" height="70"></canvas>
+                <div class="text-center mt-3">
+                    <small class="text-muted">
+                        <i class="bi bi-info-circle"></i> 
+                        Profundidade média com linhas de alerta (2.0mm) e crítico (1.5mm)
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Tabela de Dados -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-table"></i> Dados Detalhados das Medições</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th>#</th>
+                                <th>Data</th>
+                                <th>KM Total</th>
+                                <th>Interno</th>
+                                <th>C. Interno</th>
+                                <th>C. Externo</th>
+                                <th>Externo</th>
+                                <th>Média</th>
+                                <th>% Restante</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for medicao in medicoes %}
+                            <tr>
+                                <td>{{ loop.index }}</td>
+                                <td>{{ medicao.data_medicao.strftime('%d/%m/%y') }}</td>
+                                <td>{{ "%.1f"|format(medicao.km_total) }}</td>
+                                <td>{{ "%.1f"|format(medicao.interno) }}</td>
+                                <td>{{ "%.1f"|format(medicao.centro_interno) }}</td>
+                                <td>{{ "%.1f"|format(medicao.centro_externo) }}</td>
+                                <td>{{ "%.1f"|format(medicao.externo) }}</td>
+                                <td><strong>{{ "%.1f"|format(medicao.profundidade_media) }}</strong></td>
+                                <td>
+                                    {% set percent_interno = (medicao.interno / pneu.profundidade_inicial * 100) %}
+                                    {% set percent_centro_int = (medicao.centro_interno / pneu.profundidade_inicial * 100) %}
+                                    {% set percent_centro_ext = (medicao.centro_externo / pneu.profundidade_inicial * 100) %}
+                                    {% set percent_externo = (medicao.externo / pneu.profundidade_inicial * 100) %}
+                                    <small>
+                                        {{ "%.0f"|format(percent_interno) }}% | 
+                                        {{ "%.0f"|format(percent_centro_int) }}% | 
+                                        {{ "%.0f"|format(percent_centro_ext) }}% | 
+                                        {{ "%.0f"|format(percent_externo) }}%
+                                    </small>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+<script>
+// Dados das medições
+const medicoes = {{ medicoes_json|safe }};
+const profundidadeInicial = {{ pneu.profundidade_inicial }};
+
+let tipoEixo = 'medicao';
+let chartPerfilPneu, chartDesgasteTempo, chartProfundidadeMedia;
+
+// Preparar labels (eixo X)
+function prepararLabels() {
+    if (tipoEixo === 'medicao') {
+        return medicoes.map((_, idx) => `Med ${idx + 1}`);
+    } else {
+        return medicoes.map(m => m.km_total.toFixed(0) + ' km');
+    }
+}
+
+// Gráfico 1: Perfil do Pneu (última medição)
+function criarGraficoPerfilPneu() {
+    const ctx = document.getElementById('graficoPerfilPneu');
+
+    if (medicoes.length === 0) {
+        ctx.parentElement.innerHTML = '<div class="alert alert-info">Sem medições disponíveis</div>';
+        return;
+    }
+
+    const ultimaMedicao = medicoes[medicoes.length - 1];
+
+    // Calcular porcentagens em relação à profundidade inicial
+    const dados = [
+        (ultimaMedicao.interno / profundidadeInicial * 100).toFixed(1),
+        (ultimaMedicao.centro_interno / profundidadeInicial * 100).toFixed(1),
+        (ultimaMedicao.centro_externo / profundidadeInicial * 100).toFixed(1),
+        (ultimaMedicao.externo / profundidadeInicial * 100).toFixed(1)
+    ];
+
+    const coresBarras = dados.map(v => {
+        if (v >= 60) return 'rgba(40, 167, 69, 0.8)';  // Verde
+        if (v >= 40) return 'rgba(255, 193, 7, 0.8)';  // Amarelo
+        return 'rgba(220, 53, 69, 0.8)';  // Vermelho
+    });
+
+    if (chartPerfilPneu) chartPerfilPneu.destroy();
+
+    chartPerfilPneu = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: ['Interno', 'Centro Interno', 'Centro Externo', 'Externo'],
+            datasets: [{
+                label: '% da Profundidade Inicial',
+                data: dados,
+                backgroundColor: coresBarras,
+                borderColor: coresBarras.map(c => c.replace('0.8', '1')),
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                legend: { display: false },
+                title: {
+                    display: true,
+                    text: 'Última Medição - Vista Frontal do Pneu',
+                    font: { size: 16, weight: 'bold' }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    max: 100,
+                    title: { 
+                        display: true, 
+                        text: '% da Profundidade Inicial',
+                        font: { size: 14, weight: 'bold' }
+                    },
+                    ticks: {
+                        callback: function(value) {
+                            return value + '%';
+                        }
+                    }
+                },
+                x: {
+                    title: { 
+                        display: true, 
+                        text: 'Posição no Pneu (Vista Frontal)',
+                        font: { size: 14, weight: 'bold' }
+                    }
+                }
+            }
+        }
+    });
+}
+
+// Gráfico 2: Desgaste ao Longo do Tempo
+
+// ============================================================================
+// Gráfico 2: Desgaste ao Longo do Tempo (COM LINHA INICIAL)
+// ============================================================================
+function criarGraficoDesgasteTempo() {
+    const ctx = document.getElementById('graficoDesgasteTempo');
+
+    if (medicoes.length === 0) {
+        ctx.parentElement.innerHTML = '<div class="alert alert-info">Sem medições disponíveis</div>';
+        return;
+    }
+
+    const labels = prepararLabels();
+
+    if (chartDesgasteTempo) chartDesgasteTempo.destroy();
+
+    chartDesgasteTempo = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: 'Profundidade Inicial (Referência)',
+                    data: Array(medicoes.length).fill(profundidadeInicial),
+                    borderColor: 'rgb(108, 117, 125)',
+                    backgroundColor: 'rgba(108, 117, 125, 0.05)',
+                    borderDash: [10, 5],
+                    borderWidth: 3,
+                    pointRadius: 0,
+                    fill: false
+                },
+                {
+                    label: 'Interno',
+                    data: medicoes.map(m => m.interno),
+                    borderColor: 'rgb(255, 99, 132)',
+                    backgroundColor: 'rgba(255, 99, 132, 0.1)',
+                    tension: 0.3,
+                    borderWidth: 2
+                },
+                {
+                    label: 'Centro Interno',
+                    data: medicoes.map(m => m.centro_interno),
+                    borderColor: 'rgb(54, 162, 235)',
+                    backgroundColor: 'rgba(54, 162, 235, 0.1)',
+                    tension: 0.3,
+                    borderWidth: 2
+                },
+                {
+                    label: 'Centro Externo',
+                    data: medicoes.map(m => m.centro_externo),
+                    borderColor: 'rgb(255, 206, 86)',
+                    backgroundColor: 'rgba(255, 206, 86, 0.1)',
+                    tension: 0.3,
+                    borderWidth: 2
+                },
+                {
+                    label: 'Externo',
+                    data: medicoes.map(m => m.externo),
+                    borderColor: 'rgb(75, 192, 192)',
+                    backgroundColor: 'rgba(75, 192, 192, 0.1)',
+                    tension: 0.3,
+                    borderWidth: 2
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                legend: { 
+                    display: true,
+                    position: 'top'
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: { 
+                        display: true, 
+                        text: 'Profundidade (mm)',
+                        font: { size: 14, weight: 'bold' }
+                    }
+                },
+                x: {
+                    title: { 
+                        display: true, 
+                        text: tipoEixo === 'medicao' ? 'Medição' : 'Quilometragem',
+                        font: { size: 14, weight: 'bold' }
+                    }
+                }
+            }
+        }
+    });
+}
+
+// ============================================================================
+// Gráfico 3: Profundidade Média (COM LINHA INICIAL)
+// ============================================================================
+function criarGraficoProfundidadeMedia() {
+    const ctx = document.getElementById('graficoProfundidadeMedia');
+
+    if (medicoes.length === 0) {
+        ctx.parentElement.innerHTML = '<div class="alert alert-info">Sem medições disponíveis</div>';
+        return;
+    }
+
+    const labels = prepararLabels();
+
+    if (chartProfundidadeMedia) chartProfundidadeMedia.destroy();
+
+    chartProfundidadeMedia = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: 'Profundidade Inicial (Referência)',
+                    data: Array(medicoes.length).fill(profundidadeInicial),
+                    borderColor: 'rgb(108, 117, 125)',
+                    borderDash: [10, 5],
+                    borderWidth: 3,
+                    pointRadius: 0,
+                    fill: false
+                },
+                {
+                    label: 'Profundidade Média Atual',
+                    data: medicoes.map(m => m.profundidade_media),
+                    borderColor: 'rgb(75, 192, 192)',
+                    backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                    tension: 0.3,
+                    fill: true,
+                    borderWidth: 3
+                },
+                {
+                    label: 'Limite de Alerta (2.0mm)',
+                    data: Array(medicoes.length).fill(2.0),
+                    borderColor: 'rgb(255, 193, 7)',
+                    borderDash: [5, 5],
+                    borderWidth: 2,
+                    pointRadius: 0,
+                    fill: false
+                },
+                {
+                    label: 'Limite Crítico (1.5mm)',
+                    data: Array(medicoes.length).fill(1.5),
+                    borderColor: 'rgb(220, 53, 69)',
+                    borderDash: [5, 5],
+                    borderWidth: 2,
+                    pointRadius: 0,
+                    fill: false
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                legend: { 
+                    display: true,
+                    position: 'top'
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: { 
+                        display: true, 
+                        text: 'Profundidade Média (mm)',
+                        font: { size: 14, weight: 'bold' }
+                    }
+                },
+                x: {
+                    title: { 
+                        display: true, 
+                        text: tipoEixo === 'medicao' ? 'Medição' : 'Quilometragem',
+                        font: { size: 14, weight: 'bold' }
+                    }
+                }
+            }
+        }
+    });
+}
+// Atualizar gráficos quando mudar o tipo de eixo
+function atualizarGraficos(tipo) {
+    tipoEixo = tipo;
+    criarGraficoPerfilPneu();
+    criarGraficoDesgasteTempo();
+    criarGraficoProfundidadeMedia();
+}
+
+// Criar gráficos ao carregar página
+document.addEventListener('DOMContentLoaded', function() {
+    criarGraficoPerfilPneu();
+    criarGraficoDesgasteTempo();
+    criarGraficoProfundidadeMedia();
+});
+</script>
+{% endblock %}

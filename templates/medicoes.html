@@ -1,0 +1,394 @@
+{% extends "base.html" %}
+{% block title %}Medições - Tire Management{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col">
+        <h1><i class="bi bi-clipboard-data"></i> Medições</h1>
+        <p class="text-muted">Registre medições de profundidade e quilometragem</p>
+    </div>
+</div>
+
+<!-- Seletor de Tipo de Medição -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="btn-group w-100" role="group">
+            <input type="radio" class="btn-check" name="tipo_medicao" id="medicao_set" value="set" checked>
+            <label class="btn btn-outline-primary" for="medicao_set" onclick="mostrarFormSet()">
+                <i class="bi bi-grid-3x3"></i> Medir Set Completo (4 Pneus)
+            </label>
+
+            <input type="radio" class="btn-check" name="tipo_medicao" id="medicao_individual" value="individual">
+            <label class="btn btn-outline-secondary" for="medicao_individual" onclick="mostrarFormIndividual()">
+                <i class="bi bi-circle"></i> Medir Pneu Individual
+            </label>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <!-- FORMULÁRIO: MEDIÇÃO DE SET COMPLETO -->
+        <div class="card mb-4" id="form_set">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="bi bi-grid-3x3"></i> Medição de Set Completo</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('medicao_set') }}">
+                    <!-- Informações Gerais -->
+                    <div class="row mb-3">
+                        <div class="col-md-3">
+                            <label class="form-label">Set <span class="text-danger">*</span></label>
+                            <select name="set_id" class="form-select" required id="select_set" onchange="carregarPneusSet()">
+                                <option value="">Selecione um set</option>
+                                {% for set in sets_ativos %}
+                                <option value="{{ set.id }}" 
+                                        data-de-id="{{ set.pneu_dianteiro_esquerdo_id }}"
+                                        data-dd-id="{{ set.pneu_dianteiro_direito_id }}"
+                                        data-te-id="{{ set.pneu_traseiro_esquerdo_id }}"
+                                        data-td-id="{{ set.pneu_traseiro_direito_id }}"
+                                        data-de-nome="{{ set.pneu_de.nome if set.pneu_de else '' }}"
+                                        data-dd-nome="{{ set.pneu_dd.nome if set.pneu_dd else '' }}"
+                                        data-te-nome="{{ set.pneu_te.nome if set.pneu_te else '' }}"
+                                        data-td-nome="{{ set.pneu_td.nome if set.pneu_td else '' }}">
+                                    {{ set.nome }} - {{ set.carro.nome }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Tipo de Evento <span class="text-danger">*</span></label>
+                            <select name="tipo_evento" class="form-select" required>
+                                <option value="">Selecione</option>
+                                <option value="Treino Livre">Treino Livre</option>
+                                <option value="Classificação">Classificação</option>
+                                <option value="Corrida">Corrida</option>
+                                <option value="Teste">Teste</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Pista <span class="text-danger">*</span></label>
+                            <select name="pista_id" class="form-select" required id="pista_select_set">
+                                <option value="">Selecione</option>
+                                {% for pista in pistas %}
+                                <option value="{{ pista.id }}" data-km-volta="{{ pista.km_por_volta }}">
+                                    {{ pista.nome }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Voltas <span class="text-danger">*</span></label>
+                            <input type="number" name="voltas" class="form-control" min="1" required>
+                        </div>
+                    </div>
+
+                    <!-- Preview dos Pneus do Set -->
+                    <div id="preview_pneus" class="alert alert-info mb-4" style="display: none;">
+                        <div class="row text-center">
+                            <div class="col-3">
+                                <strong>DE</strong><br>
+                                <span id="pneu_de_nome">-</span>
+                            </div>
+                            <div class="col-3">
+                                <strong>DD</strong><br>
+                                <span id="pneu_dd_nome">-</span>
+                            </div>
+                            <div class="col-3">
+                                <strong>TE</strong><br>
+                                <span id="pneu_te_nome">-</span>
+                            </div>
+                            <div class="col-3">
+                                <strong>TD</strong><br>
+                                <span id="pneu_td_nome">-</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <!-- Medições dos 4 Pneus -->
+                    <h6 class="mb-3">Profundidades (mm) de cada pneu <span class="text-danger">*</span></h6>
+
+                    <!-- Dianteiro Esquerdo -->
+                    <div class="card mb-3">
+                        <div class="card-header bg-light">
+                            <strong>Dianteiro Esquerdo (DE)</strong>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-3">
+                                    <label class="form-label">Interno</label>
+                                    <input type="number" name="de_interno" class="form-control" step="0.1" min="0" required>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Centro Int.</label>
+                                    <input type="number" name="de_centro_interno" class="form-control" step="0.1" min="0" required>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Centro Ext.</label>
+                                    <input type="number" name="de_centro_externo" class="form-control" step="0.1" min="0" required>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Externo</label>
+                                    <input type="number" name="de_externo" class="form-control" step="0.1" min="0" required>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Dianteiro Direito -->
+                    <div class="card mb-3">
+                        <div class="card-header bg-light">
+                            <strong>Dianteiro Direito (DD)</strong>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-3">
+                                    <label class="form-label">Interno</label>
+                                    <input type="number" name="dd_interno" class="form-control" step="0.1" min="0" required>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Centro Int.</label>
+                                    <input type="number" name="dd_centro_interno" class="form-control" step="0.1" min="0" required>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Centro Ext.</label>
+                                    <input type="number" name="dd_centro_externo" class="form-control" step="0.1" min="0" required>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Externo</label>
+                                    <input type="number" name="dd_externo" class="form-control" step="0.1" min="0" required>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Traseiro Esquerdo -->
+                    <div class="card mb-3">
+                        <div class="card-header bg-light">
+                            <strong>Traseiro Esquerdo (TE)</strong>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-3">
+                                    <label class="form-label">Interno</label>
+                                    <input type="number" name="te_interno" class="form-control" step="0.1" min="0" required>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Centro Int.</label>
+                                    <input type="number" name="te_centro_interno" class="form-control" step="0.1" min="0" required>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Centro Ext.</label>
+                                    <input type="number" name="te_centro_externo" class="form-control" step="0.1" min="0" required>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Externo</label>
+                                    <input type="number" name="te_externo" class="form-control" step="0.1" min="0" required>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Traseiro Direito -->
+                    <div class="card mb-3">
+                        <div class="card-header bg-light">
+                            <strong>Traseiro Direito (TD)</strong>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-3">
+                                    <label class="form-label">Interno</label>
+                                    <input type="number" name="td_interno" class="form-control" step="0.1" min="0" required>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Centro Int.</label>
+                                    <input type="number" name="td_centro_interno" class="form-control" step="0.1" min="0" required>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Centro Ext.</label>
+                                    <input type="number" name="td_centro_externo" class="form-control" step="0.1" min="0" required>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Externo</label>
+                                    <input type="number" name="td_externo" class="form-control" step="0.1" min="0" required>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="d-grid gap-2 d-md-flex">
+                        <button type="submit" class="btn btn-success btn-lg">
+                            <i class="bi bi-check-circle"></i> Registrar Medição do Set Completo
+                        </button>
+                        <button type="reset" class="btn btn-secondary">
+                            <i class="bi bi-arrow-counterclockwise"></i> Limpar
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- FORMULÁRIO: MEDIÇÃO INDIVIDUAL (Original) -->
+        <div class="card mb-4" id="form_individual" style="display: none;">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-circle"></i> Medição de Pneu Individual</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('medicoes') }}">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Pneu <span class="text-danger">*</span></label>
+                            <select name="pneu_id" class="form-select" required>
+                                <option value="">Selecione um pneu</option>
+                                {% for pneu in pneus %}
+                                <option value="{{ pneu.id }}">
+                                    {{ pneu.nome }} - {{ pneu.carro.nome }} ({{ "%.0f"|format(pneu.quilometragem_atual) }}km)
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Tipo de Evento <span class="text-danger">*</span></label>
+                            <select name="tipo_evento" class="form-select" required>
+                                <option value="">Selecione</option>
+                                <option value="Treino Livre">Treino Livre</option>
+                                <option value="Classificação">Classificação</option>
+                                <option value="Corrida">Corrida</option>
+                                <option value="Teste">Teste</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <label class="form-label">Pista</label>
+                            <select name="pista_id" class="form-select">
+                                <option value="">Selecione</option>
+                                {% for pista in pistas %}
+                                <option value="{{ pista.id }}">{{ pista.nome }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Voltas <span class="text-danger">*</span></label>
+                            <input type="number" name="voltas" class="form-control" min="1" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Tempo (min)</label>
+                            <input type="number" name="tempo_pista" class="form-control" min="1" value="30">
+                        </div>
+                    </div>
+
+                    <h6 class="mb-3">Profundidades (mm) <span class="text-danger">*</span></h6>
+                    <div class="row mb-3">
+                        <div class="col-md-3">
+                            <label class="form-label">Interno</label>
+                            <input type="number" name="interno" class="form-control" step="0.1" min="0" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Centro Int.</label>
+                            <input type="number" name="centro_interno" class="form-control" step="0.1" min="0" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Centro Ext.</label>
+                            <input type="number" name="centro_externo" class="form-control" step="0.1" min="0" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Externo</label>
+                            <input type="number" name="externo" class="form-control" step="0.1" min="0" required>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-success">
+                        <i class="bi bi-check-circle"></i> Registrar Medição
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Histórico de Medições -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-list"></i> Histórico de Medições</h5>
+            </div>
+            <div class="card-body">
+                {% if medicoes %}
+                <div class="table-responsive">
+                    <table class="table table-hover table-sm">
+                        <thead>
+                            <tr>
+                                <th>Data</th>
+                                <th>Pneu</th>
+                                <th>Evento</th>
+                                <th>Pista</th>
+                                <th>Voltas / KM</th>
+                                <th>Prof. Média</th>
+                                <th>Condição</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for medicao in medicoes[:20] %}
+                            <tr>
+                                <td>{{ medicao.data_medicao.strftime('%d/%m %H:%M') }}</td>
+                                <td><strong>{{ medicao.pneu.nome }}</strong></td>
+                                <td>{{ medicao.tipo_evento }}</td>
+                                <td>{{ medicao.pista_nome }}</td>
+                                <td>{{ medicao.voltas }} voltas<br><small>{{ "%.1f"|format(medicao.quilometragem) }} km</small></td>
+                                <td>{{ "%.2f"|format(medicao.profundidade_media) }} mm</td>
+                                <td>
+                                    {% if medicao.condicao_twi == 'ok' and medicao.condicao_km == 'ok' %}
+                                        <span class="badge bg-success">OK</span>
+                                    {% elif medicao.condicao_twi == 'crítico' or medicao.condicao_km == 'crítico' %}
+                                        <span class="badge bg-danger">CRÍTICO</span>
+                                    {% else %}
+                                        <span class="badge bg-warning">ALERTA</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="alert alert-info mb-0">
+                    <i class="bi bi-info-circle"></i> Nenhuma medição registrada ainda.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function mostrarFormSet() {
+    document.getElementById('form_set').style.display = 'block';
+    document.getElementById('form_individual').style.display = 'none';
+}
+
+function mostrarFormIndividual() {
+    document.getElementById('form_set').style.display = 'none';
+    document.getElementById('form_individual').style.display = 'block';
+}
+
+function carregarPneusSet() {
+    const select = document.getElementById('select_set');
+    const option = select.options[select.selectedIndex];
+
+    if (option.value) {
+        document.getElementById('preview_pneus').style.display = 'block';
+        document.getElementById('pneu_de_nome').textContent = option.dataset.deNome || '-';
+        document.getElementById('pneu_dd_nome').textContent = option.dataset.ddNome || '-';
+        document.getElementById('pneu_te_nome').textContent = option.dataset.teNome || '-';
+        document.getElementById('pneu_td_nome').textContent = option.dataset.tdNome || '-';
+    } else {
+        document.getElementById('preview_pneus').style.display = 'none';
+    }
+}
+</script>
+{% endblock %}

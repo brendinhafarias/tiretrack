@@ -1,0 +1,196 @@
+{% extends 'base.html' %}
+{% block title %}Configurações{% endblock %}
+
+{% block breadcrumb %}
+<span class="text-gray-600 mx-2">/</span>
+<span class="text-gray-300 text-sm">Configurações</span>
+{% endblock %}
+
+{% block content %}
+<div x-data="{ tab: 'users' }" class="space-y-5">
+  <h1 class="text-2xl font-bold text-white">Configurações da Equipe</h1>
+  <div class="text-sm text-gray-400 bg-gray-800 border border-gray-700 rounded-xl px-4 py-2 inline-block">
+    <strong class="text-white">{{ team.name }}</strong> — {{ team.slug }}
+  </div>
+
+  <!-- Tabs -->
+  <div class="flex gap-1 bg-gray-900 p-1 rounded-xl w-fit flex-wrap">
+    {% for t_id, t_label in [('users','Usuários'),('drivers','Pilotos'),('tracks','Pistas')] %}
+    <button @click="tab = '{{ t_id }}'"
+            :class="tab === '{{ t_id }}' ? 'bg-red-600 text-white' : 'text-gray-400 hover:text-white'"
+            class="px-4 py-2 rounded-lg text-sm font-medium transition-colors min-h-[40px]">
+      {{ t_label }}
+    </button>
+    {% endfor %}
+  </div>
+
+  <!-- Users tab -->
+  <div x-show="tab === 'users'" class="space-y-4">
+    <div class="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden">
+      <div class="px-5 py-3 border-b border-gray-700 flex items-center justify-between">
+        <h2 class="font-semibold text-gray-200">Usuários ({{ users|length }})</h2>
+      </div>
+      <table class="w-full text-sm">
+        <thead><tr class="bg-gray-900 text-gray-400 text-xs uppercase border-b border-gray-700">
+          <th class="px-4 py-3 text-left">Username</th>
+          <th class="px-4 py-3 text-left">E-mail</th>
+          <th class="px-4 py-3 text-left">Papel</th>
+          <th class="px-4 py-3 text-center">Status</th>
+          <th class="px-4 py-3 text-right">Ação</th>
+        </tr></thead>
+        <tbody class="divide-y divide-gray-700">
+          {% for u in users %}
+          <tr class="hover:bg-gray-750">
+            <td class="px-4 py-3 font-medium text-gray-200">{{ u.username }}</td>
+            <td class="px-4 py-3 text-gray-400">{{ u.email }}</td>
+            <td class="px-4 py-3 text-gray-400">{{ u.role }}</td>
+            <td class="px-4 py-3 text-center">
+              <span class="text-xs px-2 py-0.5 rounded-full {{ 'bg-green-900 text-green-300' if u.is_active else 'bg-gray-700 text-gray-400' }}">
+                {{ 'Ativo' if u.is_active else 'Inativo' }}
+              </span>
+            </td>
+            <td class="px-4 py-3 text-right">
+              {% if u.id != current_user.id %}
+              <form method="POST" action="{{ url_for('admin.user_toggle', user_id=u.id) }}" class="inline">
+                <button type="submit" class="text-xs bg-gray-700 hover:bg-gray-600 text-white px-3 py-1.5 rounded-lg">
+                  {{ 'Desativar' if u.is_active else 'Ativar' }}
+                </button>
+              </form>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Add user form -->
+    <div class="bg-gray-800 rounded-xl p-5 border border-gray-700">
+      <h3 class="font-semibold text-gray-200 mb-4">Criar Usuário</h3>
+      <form method="POST" action="{{ url_for('admin.user_new') }}" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <input type="text" name="username" required placeholder="Username"
+               class="px-4 py-3 bg-gray-900 border border-gray-600 rounded-xl text-white focus:outline-none focus:border-red-500 min-h-[48px]">
+        <input type="email" name="email" required placeholder="E-mail"
+               class="px-4 py-3 bg-gray-900 border border-gray-600 rounded-xl text-white focus:outline-none focus:border-red-500 min-h-[48px]">
+        <input type="password" name="password" required placeholder="Senha"
+               class="px-4 py-3 bg-gray-900 border border-gray-600 rounded-xl text-white focus:outline-none focus:border-red-500 min-h-[48px]">
+        <select name="role" class="px-4 py-3 bg-gray-900 border border-gray-600 rounded-xl text-white focus:outline-none focus:border-red-500 min-h-[48px]">
+          <option value="team_user">Mecânico/Engenheiro</option>
+          <option value="team_admin">Admin da Equipe</option>
+          <option value="viewer">Somente leitura</option>
+        </select>
+        <div class="sm:col-span-2">
+          <button type="submit" class="w-full sm:w-auto bg-red-600 hover:bg-red-700 text-white font-semibold px-6 py-3 rounded-xl min-h-[48px]">
+            Criar Usuário
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Drivers tab -->
+  <div x-show="tab === 'drivers'" class="space-y-4">
+    <div class="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden">
+      <div class="px-5 py-3 border-b border-gray-700">
+        <h2 class="font-semibold text-gray-200">Pilotos ({{ drivers|length }})</h2>
+      </div>
+      <table class="w-full text-sm">
+        <thead><tr class="bg-gray-900 text-gray-400 text-xs uppercase border-b border-gray-700">
+          <th class="px-4 py-3 text-left">Nome</th>
+          <th class="px-4 py-3 text-left">Número</th>
+          <th class="px-4 py-3 text-left">Categoria</th>
+          <th class="px-4 py-3 text-center">Status</th>
+          <th class="px-4 py-3 text-right">Ação</th>
+        </tr></thead>
+        <tbody class="divide-y divide-gray-700">
+          {% for d in drivers %}
+          <tr class="hover:bg-gray-750">
+            <td class="px-4 py-3 font-medium text-gray-200">{{ d.name }}</td>
+            <td class="px-4 py-3 text-gray-400 font-mono">{{ d.number or '—' }}</td>
+            <td class="px-4 py-3 text-gray-400">{{ d.category or '—' }}</td>
+            <td class="px-4 py-3 text-center">
+              <span class="text-xs px-2 py-0.5 rounded-full {{ 'bg-green-900 text-green-300' if d.is_active else 'bg-gray-700 text-gray-400' }}">
+                {{ 'Ativo' if d.is_active else 'Inativo' }}
+              </span>
+            </td>
+            <td class="px-4 py-3 text-right">
+              <form method="POST" action="{{ url_for('admin.driver_toggle', driver_id=d.id) }}" class="inline">
+                <button type="submit" class="text-xs bg-gray-700 hover:bg-gray-600 text-white px-3 py-1.5 rounded-lg">
+                  {{ 'Desativar' if d.is_active else 'Ativar' }}
+                </button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="bg-gray-800 rounded-xl p-5 border border-gray-700">
+      <h3 class="font-semibold text-gray-200 mb-4">Cadastrar Piloto</h3>
+      <form method="POST" action="{{ url_for('admin.driver_new') }}" class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <input type="text" name="name" required placeholder="Nome do piloto"
+               class="px-4 py-3 bg-gray-900 border border-gray-600 rounded-xl text-white focus:outline-none focus:border-red-500 min-h-[48px]">
+        <input type="text" name="number" placeholder="Número (#77)"
+               class="px-4 py-3 bg-gray-900 border border-gray-600 rounded-xl text-white focus:outline-none focus:border-red-500 min-h-[48px]">
+        <input type="text" name="category" placeholder="Categoria (Stock Car)"
+               class="px-4 py-3 bg-gray-900 border border-gray-600 rounded-xl text-white focus:outline-none focus:border-red-500 min-h-[48px]">
+        <div class="sm:col-span-3">
+          <button type="submit" class="bg-red-600 hover:bg-red-700 text-white font-semibold px-6 py-3 rounded-xl min-h-[48px]">
+            Cadastrar Piloto
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Tracks tab -->
+  <div x-show="tab === 'tracks'" class="space-y-4">
+    <div class="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden">
+      <div class="px-5 py-3 border-b border-gray-700">
+        <h2 class="font-semibold text-gray-200">Pistas disponíveis ({{ tracks|length }})</h2>
+      </div>
+      <table class="w-full text-sm">
+        <thead><tr class="bg-gray-900 text-gray-400 text-xs uppercase border-b border-gray-700">
+          <th class="px-4 py-3 text-left">Nome</th>
+          <th class="px-4 py-3 text-right">Km/volta</th>
+          <th class="px-4 py-3 text-left">Localização</th>
+          <th class="px-4 py-3 text-center">Tipo</th>
+        </tr></thead>
+        <tbody class="divide-y divide-gray-700">
+          {% for t in tracks %}
+          <tr class="hover:bg-gray-750">
+            <td class="px-4 py-3 font-medium text-gray-200">{{ t.name }}</td>
+            <td class="px-4 py-3 text-right font-mono text-gray-300">{{ '%.3f'|format(t.km_per_lap) if t.km_per_lap else '—' }}</td>
+            <td class="px-4 py-3 text-gray-400">{{ t.location or '—' }}</td>
+            <td class="px-4 py-3 text-center">
+              <span class="text-xs px-1.5 py-0.5 rounded {{ 'bg-blue-900 text-blue-300' if t.is_global else 'bg-gray-700 text-gray-400' }}">
+                {{ 'Global' if t.is_global else 'Equipe' }}
+              </span>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="bg-gray-800 rounded-xl p-5 border border-gray-700">
+      <h3 class="font-semibold text-gray-200 mb-4">Adicionar Pista</h3>
+      <form method="POST" action="{{ url_for('admin.track_new') }}" class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <input type="text" name="name" required placeholder="Nome da pista"
+               class="px-4 py-3 bg-gray-900 border border-gray-600 rounded-xl text-white focus:outline-none focus:border-red-500 min-h-[48px]">
+        <input type="number" name="km_per_lap" step="0.001" inputmode="decimal" placeholder="km por volta (ex: 4.309)"
+               class="px-4 py-3 bg-gray-900 border border-gray-600 rounded-xl text-white focus:outline-none focus:border-red-500 min-h-[48px]">
+        <input type="text" name="location" placeholder="Localização (Cidade-UF)"
+               class="px-4 py-3 bg-gray-900 border border-gray-600 rounded-xl text-white focus:outline-none focus:border-red-500 min-h-[48px]">
+        <div class="sm:col-span-3">
+          <button type="submit" class="bg-red-600 hover:bg-red-700 text-white font-semibold px-6 py-3 rounded-xl min-h-[48px]">
+            Adicionar Pista
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

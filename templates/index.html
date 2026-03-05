@@ -1,0 +1,338 @@
+{% extends "base.html" %}
+{% block title %}Dashboard - Tire Management{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col">
+        <h1><i class="bi bi-speedometer2"></i> Dashboard</h1>
+        <p class="text-muted">Visão geral do sistema de pneus</p>
+    </div>
+</div>
+
+<!-- Estatísticas Resumidas -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <i class="bi bi-circle fs-1 text-primary"></i>
+                <h3 class="mt-2">{{ stats.total_pneus }}</h3>
+                <p class="text-muted mb-0">Total de Pneus</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <i class="bi bi-check-circle fs-1 text-success"></i>
+                <h3 class="mt-2">{{ stats.pneus_disponiveis }}</h3>
+                <p class="text-muted mb-0">Disponíveis</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <i class="bi bi-grid-3x3 fs-1 text-info"></i>
+                <h3 class="mt-2">{{ stats.pneus_montados }}</h3>
+                <p class="text-muted mb-0">Montados</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <i class="bi bi-clipboard-data fs-1 text-warning"></i>
+                <h3 class="mt-2">{{ stats.total_medicoes }}</h3>
+                <p class="text-muted mb-0">Medições</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Botões de Ação Rápida -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <div class="row g-2">
+                    <div class="col-md-3">
+                        <a href="{{ url_for('comprar_pneus') }}" class="btn btn-primary w-100">
+                            <i class="bi bi-cart-plus"></i> Adicionar Pneus
+                        </a>
+                    </div>
+                    <div class="col-md-3">
+                        <a href="{{ url_for('medicoes') }}" class="btn btn-success w-100">
+                            <i class="bi bi-clipboard-data"></i> Registrar Medição
+                        </a>
+                    </div>
+                    <div class="col-md-3">
+                        <a href="{{ url_for('sets') }}" class="btn btn-info w-100">
+                            <i class="bi bi-grid-3x3"></i> Montar Set
+                        </a>
+                    </div>
+                    <div class="col-md-3">
+                        <a href="{{ url_for('visualizar_pneus') }}" class="btn btn-secondary w-100">
+                            <i class="bi bi-list-ul"></i> Ver Todos os Pneus
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- VERIFICAR SE EXISTE pneus_detalhados (versão nova) ou pneus_recentes (versão antiga) -->
+{% if pneus_detalhados %}
+<!-- VERSÃO NOVA: Tabela Detalhada -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="bi bi-table"></i> Detalhamento Completo dos Pneus</h5>
+                <div>
+                    <button class="btn btn-sm btn-outline-secondary" onclick="filtrarStatus('todos')">Todos</button>
+                    <button class="btn btn-sm btn-outline-success" onclick="filtrarStatus('Disponível')">Disponíveis</button>
+                    <button class="btn btn-sm btn-outline-primary" onclick="filtrarStatus('Montado')">Montados</button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover table-sm" id="tabelaPneus">
+                        <thead class="table-light sticky-top">
+                            <tr>
+                                <th>Pneu</th>
+                                <th>Carro</th>
+                                <th>Status</th>
+                                <th>Posição Atual</th>
+                                <th>Interno (mm)</th>
+                                <th>Centro Int. (mm)</th>
+                                <th>Centro Ext. (mm)</th>
+                                <th>Externo (mm)</th>
+                                <th>Média (mm)</th>
+                                <th>Pista</th>
+                                <th>KM Total</th>
+                                <th>Voltas</th>
+                                <th>Última Medição</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for pneu_info in pneus_detalhados %}
+                            <tr class="pneu-row" data-status="{{ pneu_info.pneu.status }}">
+                                <td>
+                                    <strong>{{ pneu_info.pneu.nome }}</strong><br>
+                                    <small class="text-muted">{{ pneu_info.pneu.codigo_barras }}</small>
+                                </td>
+                                <td>{{ pneu_info.pneu.carro.nome }}</td>
+                                <td>
+                                    {% if pneu_info.pneu.status == 'Disponível' %}
+                                        <span class="badge bg-success">{{ pneu_info.pneu.status }}</span>
+                                    {% elif pneu_info.pneu.status == 'Montado' %}
+                                        <span class="badge bg-primary">{{ pneu_info.pneu.status }}</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">{{ pneu_info.pneu.status }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if pneu_info.posicao_atual %}
+                                        <span class="badge bg-dark">{{ pneu_info.posicao_atual }}</span><br>
+                                        <small class="text-muted">{{ pneu_info.set_nome }}</small>
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if pneu_info.ultima_medicao %}
+                                        {{ "%.1f"|format(pneu_info.ultima_medicao.interno) }}
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if pneu_info.ultima_medicao %}
+                                        {{ "%.1f"|format(pneu_info.ultima_medicao.centro_interno) }}
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if pneu_info.ultima_medicao %}
+                                        {{ "%.1f"|format(pneu_info.ultima_medicao.centro_externo) }}
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if pneu_info.ultima_medicao %}
+                                        {{ "%.1f"|format(pneu_info.ultima_medicao.externo) }}
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if pneu_info.ultima_medicao %}
+                                        <strong>{{ "%.2f"|format(pneu_info.ultima_medicao.profundidade_media) }}</strong>
+                                        {% if pneu_info.ultima_medicao.profundidade_media < 1.5 %}
+                                            <i class="bi bi-exclamation-triangle text-danger"></i>
+                                        {% elif pneu_info.ultima_medicao.profundidade_media < 2.0 %}
+                                            <i class="bi bi-exclamation-circle text-warning"></i>
+                                        {% endif %}
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if pneu_info.ultima_medicao %}
+                                        {{ pneu_info.ultima_medicao.pista_nome }}
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <strong>{{ "%.1f"|format(pneu_info.pneu.quilometragem_atual) }}</strong> km
+                                    {% set km_percent = (pneu_info.pneu.quilometragem_atual / pneu_info.pneu.limite_km * 100) %}
+                                    <div class="progress" style="height: 4px;">
+                                        <div class="progress-bar 
+                                            {% if km_percent < 80 %}bg-success
+                                            {% elif km_percent < 100 %}bg-warning
+                                            {% else %}bg-danger{% endif %}" 
+                                            style="width: {{ km_percent if km_percent <= 100 else 100 }}%">
+                                        </div>
+                                    </div>
+                                    <small class="text-muted">Max: {{ pneu_info.pneu.limite_km }} km</small>
+                                </td>
+                                <td>
+                                    {% if pneu_info.total_voltas %}
+                                        <strong>{{ pneu_info.total_voltas }}</strong> voltas
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if pneu_info.ultima_medicao %}
+                                        {{ pneu_info.ultima_medicao.data_medicao.strftime('%d/%m %H:%M') }}<br>
+                                        <small class="text-muted">{{ pneu_info.ultima_medicao.tipo_evento }}</small>
+                                    {% else %}
+                                        <span class="text-muted">Sem medições</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <a href="{{ url_for('historico_pneu', pneu_id=pneu_info.pneu.id) }}" 
+                                       class="btn btn-sm btn-outline-info" title="Ver histórico">
+                                        <i class="bi bi-clock-history"></i>
+                                    </a>
+                                    <a href="{{ url_for('graficos_pneu', pneu_id=pneu_info.pneu.id) }}" 
+                                       class="btn btn-sm btn-outline-success" title="Ver gráficos">
+                                        <i class="bi bi-graph-up"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% elif pneus_recentes %}
+<!-- VERSÃO ANTIGA: Lista Simples -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-list"></i> Pneus Recentes</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Nome</th>
+                                <th>Carro</th>
+                                <th>Status</th>
+                                <th>KM Atual</th>
+                                <th>Data Compra</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for pneu in pneus_recentes %}
+                            <tr>
+                                <td><strong>{{ pneu.nome }}</strong></td>
+                                <td>{{ pneu.carro.nome }}</td>
+                                <td>
+                                    <span class="badge bg-{{ 'success' if pneu.status == 'Disponível' else 'primary' if pneu.status == 'Montado' else 'secondary' }}">
+                                        {{ pneu.status }}
+                                    </span>
+                                </td>
+                                <td>{{ "%.1f"|format(pneu.quilometragem_atual) }} km</td>
+                                <td>{{ pneu.data_compra.strftime('%d/%m/%Y') }}</td>
+                                <td>
+                                    <a href="{{ url_for('historico_pneu', pneu_id=pneu.id) }}" 
+                                       class="btn btn-sm btn-outline-info">
+                                        <i class="bi bi-clock-history"></i>
+                                    </a>
+                                    <a href="{{ url_for('graficos_pneu', pneu_id=pneu.id) }}" 
+                                       class="btn btn-sm btn-outline-success">
+                                        <i class="bi bi-graph-up"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% else %}
+<!-- SEM PNEUS -->
+<div class="row">
+    <div class="col-12">
+        <div class="alert alert-info">
+            <i class="bi bi-info-circle"></i> Nenhum pneu cadastrado ainda.
+            <a href="{{ url_for('comprar_pneus') }}" class="alert-link">Adicione o primeiro pneu</a>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<script>
+// Função para filtrar por status (apenas se tabela detalhada existir)
+function filtrarStatus(status) {
+    const rows = document.querySelectorAll('.pneu-row');
+    if (rows.length === 0) return;
+
+    rows.forEach(row => {
+        if (status === 'todos' || row.dataset.status === status) {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+        }
+    });
+}
+</script>
+
+<style>
+.sticky-top {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background-color: #f8f9fa;
+}
+
+.table-responsive {
+    max-height: 600px;
+    overflow-y: auto;
+}
+
+.table-sm td, .table-sm th {
+    vertical-align: middle;
+    font-size: 0.85rem;
+}
+</style>
+{% endblock %}

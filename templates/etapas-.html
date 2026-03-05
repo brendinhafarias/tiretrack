@@ -1,0 +1,274 @@
+{% extends "base.html" %}
+
+{% block title %}Etapas - Tire Management{% endblock %}
+
+{% block content %}
+<div class="page-header mb-4">
+    <div>
+        <h1 class="page-title">
+            <i class="fas fa-flag-checkered"></i>
+            Gestão de Etapas
+        </h1>
+        <p class="text-muted">Calendário e controle de etapas da temporada</p>
+    </div>
+</div>
+
+<!-- CALENDÁRIO DE ETAPAS -->
+<div class="card mb-4">
+    <h3 class="mb-4"><i class="fas fa-calendar-alt"></i> Calendário 2026 - Stock Car</h3>
+
+    {% if etapas %}
+    <div class="row">
+        {% for etapa in etapas %}
+        <div class="col-lg-4 col-md-6 mb-3">
+            <div class="card {% if etapa.numero == etapa_atual %}border-primary{% elif etapa.status == 'Concluída' %}border-success{% endif %}" 
+                 style="border-width: 2px;">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div class="etapa-number" style="width: 50px; height: 50px; font-size: 1.25rem;">
+                        {{ etapa.numero }}
+                    </div>
+                    <span class="badge 
+                        {% if etapa.numero == etapa_atual %}badge-ok
+                        {% elif etapa.status == 'Concluída' %}badge-info
+                        {% else %}badge-neutral{% endif %}">
+                        {% if etapa.numero == etapa_atual %}
+                            <i class="fas fa-play"></i> EM ANDAMENTO
+                        {% else %}
+                            {{ etapa.status }}
+                        {% endif %}
+                    </span>
+                </div>
+
+                <h4 class="mt-3 mb-2">{{ etapa.local }}</h4>
+                <p class="mb-1"><i class="fas fa-calendar"></i> {{ etapa.data }}</p>
+                <p class="mb-1"><i class="fas fa-road"></i> {{ etapa.pista_nome }}</p>
+                <p class="mb-0"><i class="fas fa-tag"></i> {{ etapa.tipo }}</p>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>
+
+<!-- AVANÇO DE ETAPA -->
+{% if etapa_atual < 12 %}
+<div class="card" style="background: linear-gradient(135deg, var(--primary-color), var(--primary-dark)); color: white;">
+    <h3 class="mb-3"><i class="fas fa-forward"></i> Avançar para Próxima Etapa</h3>
+    <p class="mb-4">Selecione <strong>exatamente 4 pneus</strong> para levar para a Etapa {{ etapa_atual + 1 }}</p>
+
+    <form method="POST" action="{{ url_for('avancar_etapa') }}" id="formAvancarEtapa">
+        <div class="card" style="background: white; color: var(--text-dark); padding: 1.5rem; margin-bottom: 1.5rem;">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h4 class="mb-0">Pneus Disponíveis na Etapa {{ etapa_atual }}</h4>
+                <div>
+                    <span class="badge badge-primary" id="contador-selecionados">0 / 4 selecionados</span>
+                </div>
+            </div>
+
+            <div class="alert alert-info mb-3">
+                <i class="fas fa-info-circle"></i>
+                <strong>Importante:</strong> Você deve selecionar exatamente 4 pneus para avançar.
+                Os pneus não selecionados serão descartados.
+            </div>
+
+            <!-- GRID DE PNEUS SELECIONÁVEIS -->
+            <div class="row" id="grid-pneus">
+                {% set pneus_etapa_atual = namespace(lista=[]) %}
+                <!-- Buscar pneus da etapa atual que não estão descartados -->
+                {% for pneu in [] %}
+                {% endfor %}
+
+                <p class="text-center text-muted">Carregando pneus da etapa atual...</p>
+            </div>
+
+            <!-- Inputs hidden para enviar ao backend -->
+            <div id="hidden-inputs"></div>
+        </div>
+
+        <div class="d-flex justify-content-between">
+            <a href="{{ url_for('index') }}" class="btn btn-secondary">
+                <i class="fas fa-times"></i> Cancelar
+            </a>
+            <button type="submit" class="btn" id="btnAvancar" 
+                    style="background: white; color: var(--primary-color); font-weight: 600;" 
+                    disabled>
+                <i class="fas fa-flag-checkered"></i> Concluir Etapa {{ etapa_atual }} e Avançar
+            </button>
+        </div>
+    </form>
+</div>
+{% else %}
+<div class="card text-center" style="padding: 3rem;">
+    <i class="fas fa-trophy fa-3x text-warning mb-3"></i>
+    <h3>Temporada Concluída!</h3>
+    <p class="text-muted">Você completou todas as 12 etapas da temporada 2026.</p>
+</div>
+{% endif %}
+
+<!-- HISTÓRICO -->
+{% if historico %}
+<div class="card mt-4">
+    <h3 class="mb-4"><i class="fas fa-history"></i> Histórico de Etapas Concluídas</h3>
+
+    <div class="table-responsive">
+        <table class="modern-table">
+            <thead>
+                <tr>
+                    <th>Etapa</th>
+                    <th>Data Início</th>
+                    <th>Data Conclusão</th>
+                    <th>Pneus Comprados</th>
+                    <th>Pneus Selecionados</th>
+                    <th>Pneus Descartados</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for hist in historico %}
+                <tr>
+                    <td><strong>Etapa {{ hist.etapa_numero }}</strong></td>
+                    <td>{{ hist.data_inicio }}</td>
+                    <td>{{ hist.data_fim.strftime('%d/%m/%Y %H:%M') }}</td>
+                    <td><span class="badge badge-ok">{{ hist.pneus_comprados }}</span></td>
+                    <td>
+                        <small>{{ hist.pneus_selecionados|replace('[', '')|replace(']', '')|replace('"', '') }}</small>
+                    </td>
+                    <td><span class="badge badge-critical">{{ hist.pneus_descartados }}</span></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block extrajs %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Buscar pneus da etapa atual via AJAX ou usar dados passados pelo backend
+    const etapaAtual = {{ etapa_atual }};
+    const gridPneus = document.getElementById('grid-pneus');
+    const hiddenInputs = document.getElementById('hidden-inputs');
+    const contador = document.getElementById('contador-selecionados');
+    const btnAvancar = document.getElementById('btnAvancar');
+
+    let pneusSelecionados = new Set();
+
+    // Carregar pneus (simulação - em produção, fazer fetch ao backend)
+    carregarPneus();
+
+    function carregarPneus() {
+        // Fazer requisição ao backend para pegar pneus
+        fetch(`/api/pneus/etapa/${etapaAtual}`)
+            .then(response => response.json())
+            .then(pneus => {
+                if (pneus.length === 0) {
+                    gridPneus.innerHTML = '<div class="col-12"><p class="text-center text-muted">Nenhum pneu disponível nesta etapa.</p></div>';
+                    return;
+                }
+
+                renderizarPneus(pneus);
+            })
+            .catch(error => {
+                console.error('Erro ao carregar pneus:', error);
+                gridPneus.innerHTML = '<div class="col-12"><p class="text-center text-danger">Erro ao carregar pneus. Recarregue a página.</p></div>';
+            });
+    }
+
+    function renderizarPneus(pneus) {
+        gridPneus.innerHTML = '';
+
+        pneus.forEach(pneu => {
+            const col = document.createElement('div');
+            col.className = 'col-lg-3 col-md-4 col-sm-6 mb-3';
+
+            const kmPercent = (pneu.quilometragem_atual / pneu.limite_km * 100).toFixed(0);
+            let statusColor = 'success';
+            if (kmPercent >= 100) statusColor = 'critical';
+            else if (kmPercent >= 80) statusColor = 'warning';
+
+            col.innerHTML = `
+                <div class="pneu-card" data-pneu-id="${pneu.id}" 
+                     style="border: 3px solid #e9ecef; border-radius: 1rem; padding: 1rem; cursor: pointer; transition: all 0.3s;">
+                    <div class="text-center mb-2">
+                        <i class="fas fa-circle-notch" style="font-size: 2.5rem; color: var(--primary-color);"></i>
+                    </div>
+                    <h5 class="text-center mb-2"><strong>${pneu.nome}</strong></h5>
+                    <p class="text-center text-muted mb-2" style="font-size: 0.875rem;">
+                        <i class="fas fa-car"></i> ${pneu.carro_nome}
+                    </p>
+                    <div class="mb-2">
+                        <div class="d-flex justify-content-between mb-1" style="font-size: 0.875rem;">
+                            <span>KM: ${pneu.quilometragem_atual.toFixed(2)}</span>
+                            <span class="text-muted">${pneu.limite_km} km</span>
+                        </div>
+                        <div class="progress" style="height: 6px;">
+                            <div class="progress-bar ${statusColor}" style="width: ${kmPercent}%"></div>
+                        </div>
+                    </div>
+                    <div class="text-center">
+                        <span class="badge badge-${pneu.status === 'Novo' ? 'ok' : 'info'}">${pneu.status}</span>
+                        <span class="badge badge-neutral">${pneu.status_etapa}</span>
+                    </div>
+                    <div class="text-center mt-2">
+                        <i class="fas fa-check-circle" style="font-size: 1.5rem; color: var(--status-ok); display: none;"></i>
+                    </div>
+                </div>
+            `;
+
+            const card = col.querySelector('.pneu-card');
+            const checkIcon = col.querySelector('.fa-check-circle');
+
+            card.addEventListener('click', function() {
+                toggleSelecao(pneu.id, card, checkIcon);
+            });
+
+            gridPneus.appendChild(col);
+        });
+    }
+
+    function toggleSelecao(pneuId, card, checkIcon) {
+        if (pneusSelecionados.has(pneuId)) {
+            // Desselecionar
+            pneusSelecionados.delete(pneuId);
+            card.style.borderColor = '#e9ecef';
+            card.style.backgroundColor = '';
+            checkIcon.style.display = 'none';
+        } else {
+            // Selecionar (máximo 4)
+            if (pneusSelecionados.size >= 4) {
+                showAlert('Você já selecionou 4 pneus. Desselecione um para escolher outro.', 'warning');
+                return;
+            }
+            pneusSelecionados.add(pneuId);
+            card.style.borderColor = 'var(--status-ok)';
+            card.style.backgroundColor = 'rgba(40, 167, 69, 0.05)';
+            checkIcon.style.display = 'block';
+        }
+
+        atualizarContador();
+        atualizarHiddenInputs();
+    }
+
+    function atualizarContador() {
+        const count = pneusSelecionados.size;
+        contador.textContent = `${count} / 4 selecionados`;
+        contador.className = `badge badge-${count === 4 ? 'ok' : 'warning'}`;
+
+        btnAvancar.disabled = count !== 4;
+    }
+
+    function atualizarHiddenInputs() {
+        hiddenInputs.innerHTML = '';
+        pneusSelecionados.forEach(id => {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'pneus_selecionados';
+            input.value = id;
+            hiddenInputs.appendChild(input);
+        });
+    }
+});
+</script>
+{% endblock %}

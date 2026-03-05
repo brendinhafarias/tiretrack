@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% block title %}Adicionar Pneus - Tire Management{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col">
+        <h1><i class="bi bi-cart-plus"></i> Adicionar Pneus</h1>
+        <p class="text-muted">Adicione novos pneus ao estoque</p>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-plus-circle"></i> Novo Lote de Pneus</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Carro <span class="text-danger">*</span></label>
+                            <select name="carro_id" class="form-select" required>
+                                <option value="">Selecione um carro</option>
+                                {% for carro in carros %}
+                                <option value="{{ carro.id }}">{{ carro.nome }} - #{{ carro.numero }} ({{ carro.piloto }})</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Quantidade <span class="text-danger">*</span></label>
+                            <input type="number" name="quantidade" class="form-control" 
+                                   min="1" max="50" value="4" required>
+                            <small class="text-muted">Quantos pneus adicionar</small>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Prefixo</label>
+                            <input type="text" name="prefixo" class="form-control" 
+                                   value="P" maxlength="5">
+                            <small class="text-muted">Ex: P, PN, T1</small>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Início Numeração</label>
+                            <input type="number" name="inicio_numeracao" class="form-control" 
+                                   min="1" value="1">
+                            <small class="text-muted">Número inicial da sequência</small>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Profundidade Inicial (mm)</label>
+                            <input type="number" name="profundidade_inicial" class="form-control" 
+                                   step="0.1" min="0" value="8.0">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Limite de KM</label>
+                            <input type="number" name="limite_km" class="form-control" 
+                                   min="100" value="1000">
+                        </div>
+                    </div>
+
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i> 
+                        <strong>Exemplo:</strong> Com prefixo "P" e início 1, serão criados: P001, P002, P003...
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check-circle"></i> Adicionar Pneus
+                    </button>
+                    <a href="{{ url_for('index') }}" class="btn btn-secondary">
+                        <i class="bi bi-x-circle"></i> Cancelar
+                    </a>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-lightbulb"></i> Dicas</h5>
+            </div>
+            <div class="card-body">
+                <ul class="mb-0">
+                    <li>Use prefixos curtos e descritivos</li>
+                    <li>Profundidade padrão Stock Car: 8.0mm</li>
+                    <li>Limite típico: 1000km</li>
+                    <li>Os códigos de barras serão gerados automaticamente</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="card mt-3">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-graph-up"></i> Resumo</h5>
+            </div>
+            <div class="card-body">
+                <p><strong>Total no Sistema:</strong> {{ stats.total_pneus if stats else 0 }}</p>
+                <a href="{{ url_for('visualizar_pneus') }}" class="btn btn-sm btn-outline-primary w-100">
+                    Ver Todos os Pneus
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

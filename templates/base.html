@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Tire Management System{% endblock %}</title>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Bootstrap (minimal) -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- Custom Styles -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+
+    {% block extracss %}{% endblock %}
+</head>
+<body>
+
+    {% if session.get('user_logged_in') %}
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+        <div class="sidebar-logo">
+            <i class="fas fa-circle-notch"></i>
+            <h1>Tire<br>Management</h1>
+        </div>
+
+        <nav>
+            <ul class="sidebar-nav">
+                <li class="sidebar-nav-item">
+                    <a href="{{ url_for('index') }}" class="sidebar-nav-link {% if request.endpoint == 'index' %}active{% endif %}">
+                        <i class="fas fa-home"></i>
+                        <span>Dashboard</span>
+                    </a>
+                </li>
+                <li class="sidebar-nav-item">
+                    <a href="{{ url_for('comprar_pneus') }}" class="sidebar-nav-link {% if request.endpoint == 'comprar_pneus' %}active{% endif %}">
+                        <i class="fas fa-shopping-cart"></i>
+                        <span>Comprar Pneus</span>
+                    </a>
+                </li>
+                <li class="sidebar-nav-item">
+                    <a href="{{ url_for('medicoes') }}" class="sidebar-nav-link {% if request.endpoint == 'medicoes' %}active{% endif %}">
+                        <i class="fas fa-ruler-vertical"></i>
+                        <span>Medições</span>
+                    </a>
+                </li>
+                <li class="sidebar-nav-item">
+                    <a href="{{ url_for('sets') }}" class="sidebar-nav-link {% if request.endpoint == 'sets' %}active{% endif %}">
+                        <i class="fas fa-layer-group"></i>
+                        <span>Sets de Pneus</span>
+                    </a>
+                </li>
+                <li class="sidebar-nav-item">
+                    <a href="{{ url_for('visualizar_pneus') }}" class="sidebar-nav-link {% if request.endpoint == 'visualizar_pneus' %}active{% endif %}">
+                        <i class="fas fa-list"></i>
+                        <span>Todos os Pneus</span>
+                    </a>
+                </li>
+
+                <li class="sidebar-nav-item" style="margin-top: 2rem; padding-top: 1rem; border-top: 1px solid rgba(255,255,255,0.1);">
+                    <a href="{{ url_for('carros') }}" class="sidebar-nav-link {% if request.endpoint == 'carros' %}active{% endif %}">
+                        <i class="fas fa-car"></i>
+                        <span>Carros</span>
+                    </a>
+                </li>
+                <li class="sidebar-nav-item">
+                    <a href="{{ url_for('pistas') }}" class="sidebar-nav-link {% if request.endpoint == 'pistas' %}active{% endif %}">
+                        <i class="fas fa-road"></i>
+                        <span>Pistas</span>
+                    </a>
+                </li>
+
+                <li class="sidebar-nav-item" style="margin-top: 2rem; padding-top: 1rem; border-top: 1px solid rgba(255,255,255,0.1);">
+                    <a href="{{ url_for('logout') }}" class="sidebar-nav-link">
+                        <i class="fas fa-sign-out-alt"></i>
+                        <span>Sair</span>
+                    </a>
+                </li>
+            </ul>
+        </nav>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <main class="main-content">
+        <!-- TOP BAR -->
+        <div class="top-bar">
+            <button id="sidebarToggle" class="btn btn-secondary d-lg-none">
+                <i class="fas fa-bars"></i>
+            </button>
+
+            <div class="user-info">
+                <div class="user-avatar">{{ session.get('username', 'U')[0]|upper }}</div>
+                <span><strong>{{ session.get('username', 'Usuário') }}</strong></span>
+            </div>
+        </div>
+
+        <!-- ALERTS -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                <div class="alert alert-{{ category }} fade-in">
+                    <i class="fas fa-{% if category == 'success' %}check-circle{% elif category == 'danger' %}exclamation-circle{% elif category == 'warning' %}exclamation-triangle{% else %}info-circle{% endif %}"></i>
+                    <span>{{ message }}</span>
+                    <button class="alert-close">&times;</button>
+                </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- PAGE CONTENT -->
+        {% block content %}{% endblock %}
+    </main>
+
+    {% else %}
+    <!-- LOGIN SCREEN -->
+    {% block login_content %}{% endblock %}
+    {% endif %}
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{{ url_for('static', filename='js/scripts.js') }}"></script>
+    {% block extrajs %}{% endblock %}
+</body>
+</html>

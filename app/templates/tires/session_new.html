@@ -1,0 +1,234 @@
+{% extends 'base.html' %}
+{% block title %}Nova Sessão — {{ tire.code }}{% endblock %}
+
+{% block breadcrumb %}
+<span class="text-gray-600 mx-2">/</span>
+<a href="{{ url_for('dashboard.index') }}" class="text-gray-400 hover:text-white text-sm">Dashboard</a>
+<span class="text-gray-600 mx-2">/</span>
+<a href="{{ url_for('tires.detail', tire_id=tire.id) }}" class="text-gray-400 hover:text-white text-sm font-mono">{{ tire.code }}</a>
+<span class="text-gray-600 mx-2">/</span>
+<span class="text-gray-300 text-sm">Nova Sessão</span>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto" x-data="sessionForm()">
+
+  <!-- Tire info bar -->
+  <div class="bg-gray-800 rounded-xl p-4 border border-gray-700 mb-5 flex items-center gap-4">
+    <div class="flex-1">
+      <div class="text-xl font-mono font-bold text-white">{{ tire.code }}</div>
+      <div class="text-sm text-gray-400">{{ tire.driver.name if tire.driver else '—' }} · {{ 'Slick' if tire.tire_type == 'slick' else 'Chuva' }} · {{ tire.compound }}</div>
+    </div>
+    <div class="text-right">
+      <div class="text-lg font-bold {{ 'text-green-400' if (tire.current_twi_pct or 100) >= 70 else 'text-yellow-400' if (tire.current_twi_pct or 100) >= 40 else 'text-orange-400' if (tire.current_twi_pct or 100) >= 20 else 'text-red-400' }}">
+        {{ '%.0f'|format(tire.current_twi_pct or 100) }}%
+      </div>
+      <div class="text-xs text-gray-400">TWI atual</div>
+    </div>
+  </div>
+
+  <h1 class="text-2xl font-bold text-white mb-5">Registrar Sessão</h1>
+
+  <form method="POST" action="{{ url_for('tires.session_new', tire_id=tire.id) }}" class="space-y-5">
+
+    <!-- Session info -->
+    <div class="bg-gray-800 rounded-xl p-5 border border-gray-700 space-y-4">
+      <h2 class="text-sm font-semibold text-gray-300 uppercase tracking-wide">Sessão</h2>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-300 mb-2">Data *</label>
+          <input type="date" name="date" required
+                 value="{{ today }}"
+                 class="w-full px-4 py-3 bg-gray-900 border border-gray-600 rounded-xl text-white
+                        focus:outline-none focus:border-red-500 text-base min-h-[48px]">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-300 mb-2">Tipo de Evento *</label>
+          <select name="event_type" required
+                  class="w-full px-4 py-3 bg-gray-900 border border-gray-600 rounded-xl text-white
+                         focus:outline-none focus:border-red-500 text-base min-h-[48px]">
+            <optgroup label="Treinos">
+              <option value="fp1">Treino Livre 1</option>
+              <option value="fp2">Treino Livre 2</option>
+              <option value="extra">Treino Extra</option>
+            </optgroup>
+            <optgroup label="Classificação">
+              <option value="q1">Classificação Q1</option>
+              <option value="q2">Classificação Q2</option>
+              <option value="q3">Classificação Q3</option>
+            </optgroup>
+            <optgroup label="Corridas">
+              <option value="warmup">Warm-up</option>
+              <option value="sprint">Corrida Sprint</option>
+              <option value="race">Corrida Principal</option>
+            </optgroup>
+            <optgroup label="Outros">
+              <option value="test">Teste</option>
+            </optgroup>
+          </select>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-300 mb-2">Pista *</label>
+          <select name="track_id" required @change="loadTrackKm($event.target.value)"
+                  class="w-full px-4 py-3 bg-gray-900 border border-gray-600 rounded-xl text-white
+                         focus:outline-none focus:border-red-500 text-base min-h-[48px]">
+            <option value="">Selecionar pista...</option>
+            {% for track in tracks %}
+            <option value="{{ track.id }}" data-km="{{ track.km_per_lap or '' }}">{{ track.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-300 mb-2">Posição no Carro</label>
+          <select name="position"
+                  class="w-full px-4 py-3 bg-gray-900 border border-gray-600 rounded-xl text-white
+                         focus:outline-none focus:border-red-500 text-base min-h-[48px]">
+            <option value="">—</option>
+            <option value="DE">DE — Dianteiro Esquerdo</option>
+            <option value="DD">DD — Dianteiro Direito</option>
+            <option value="TE">TE — Traseiro Esquerdo</option>
+            <option value="TD">TD — Traseiro Direito</option>
+          </select>
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-gray-300 mb-2">Etapa (opcional)</label>
+        <select name="round_id" @change="roundChanged($event)"
+                class="w-full px-4 py-3 bg-gray-900 border border-gray-600 rounded-xl text-white
+                       focus:outline-none focus:border-red-500 text-base min-h-[48px]">
+          <option value="">Sem etapa</option>
+          {% for rnd in rounds %}
+          <option value="{{ rnd.id }}" data-track="{{ rnd.track_id or '' }}">{{ rnd.name }}{% if rnd.track %} · {{ rnd.track.name }}{% endif %}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-300 mb-2">Número de Voltas *</label>
+          <input type="number" name="laps" required min="1" step="1" inputmode="numeric"
+                 @input="calcKm"
+                 x-model="laps"
+                 class="w-full px-4 py-3 bg-gray-900 border border-gray-600 rounded-xl text-white
+                        focus:outline-none focus:border-red-500 text-base min-h-[56px] font-mono text-xl text-center"
+                 placeholder="0">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-300 mb-2">
+            Km da Sessão
+            <span x-show="kmPerLap > 0" class="text-gray-500 text-xs">(automático)</span>
+          </label>
+          <input type="number" name="km_manual"
+                 :readonly="kmPerLap > 0"
+                 :class="kmPerLap > 0 ? 'opacity-60 cursor-not-allowed' : ''"
+                 :value="kmResult"
+                 @input="kmResult = $event.target.value"
+                 step="0.001" inputmode="decimal"
+                 class="w-full px-4 py-3 bg-gray-900 border border-gray-600 rounded-xl text-white
+                        focus:outline-none focus:border-red-500 text-base min-h-[56px] font-mono text-center"
+                 placeholder="0.000">
+          <div x-show="kmPerLap > 0" class="text-xs text-gray-500 mt-1" x-text="kmPerLap + ' km/volta'"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TWI readings -->
+    <div class="bg-gray-800 rounded-xl p-5 border border-gray-700 space-y-4">
+      <div>
+        <h2 class="text-sm font-semibold text-gray-300 uppercase tracking-wide">Leituras TWI (mm)</h2>
+        <p class="text-xs text-gray-500 mt-1">Referência inicial: INT={{ '%.1f'|format(tire.twi_initial_int) }} | C-I={{ '%.1f'|format(tire.twi_initial_ci) }} | C-E={{ '%.1f'|format(tire.twi_initial_co) }} | EXT={{ '%.1f'|format(tire.twi_initial_ext) }}</p>
+      </div>
+
+      <!-- Current reading reference -->
+      <div class="grid grid-cols-4 gap-2 text-center">
+        <div class="text-xs text-gray-400">INT (Interno)</div>
+        <div class="text-xs text-gray-400">C-INT</div>
+        <div class="text-xs text-gray-400">C-EXT</div>
+        <div class="text-xs text-gray-400">EXT (Externo)</div>
+      </div>
+
+      <div class="grid grid-cols-4 gap-2">
+        {% for fname, label, init_val, curr_val in [
+          ('twi_int', 'INT', tire.twi_initial_int, tire.current_twi_int),
+          ('twi_ci', 'C-I', tire.twi_initial_ci, tire.current_twi_ci),
+          ('twi_co', 'C-E', tire.twi_initial_co, tire.current_twi_co),
+          ('twi_ext', 'EXT', tire.twi_initial_ext, tire.current_twi_ext)
+        ] %}
+        <div class="space-y-1">
+          <input type="number" name="{{ fname }}" required min="0" :max="twiMax" step="0.1" inputmode="decimal"
+                 value="{{ '%.1f'|format(curr_val) if curr_val else '' }}"
+                 class="w-full px-2 py-3 bg-gray-900 border border-gray-600 rounded-xl text-white text-center
+                        focus:outline-none focus:border-red-500 font-mono text-lg font-bold min-h-[56px]"
+                 placeholder="{{ '%.1f'|format(init_val) }}">
+          <div class="text-xs text-gray-600 text-center">ref: {{ '%.1f'|format(init_val) }}</div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Notes -->
+    <div class="bg-gray-800 rounded-xl p-5 border border-gray-700">
+      <label class="block text-sm font-medium text-gray-300 mb-2">Observações (opcional)</label>
+      <textarea name="notes" rows="2"
+                class="w-full px-4 py-3 bg-gray-900 border border-gray-600 rounded-xl text-white placeholder-gray-500
+                       focus:outline-none focus:border-red-500 text-base resize-none"
+                placeholder="Comportamento do pneu, desgaste irregular..."></textarea>
+    </div>
+
+    <div class="flex gap-3">
+      <a href="{{ url_for('tires.detail', tire_id=tire.id) }}"
+         class="flex-1 text-center py-3 bg-gray-700 hover:bg-gray-600 text-white font-semibold rounded-xl min-h-[48px] flex items-center justify-center">
+        Cancelar
+      </a>
+      <button type="submit"
+              class="flex-1 py-3 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-xl min-h-[48px]">
+        Registrar Sessão
+      </button>
+    </div>
+  </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const today = new Date().toISOString().split('T')[0];
+document.querySelector('input[name="date"]').value = today;
+
+function sessionForm() {
+  return {
+    laps: '',
+    kmPerLap: 0,
+    kmResult: '',
+    twiMax: 30,
+    loadTrackKm(trackId) {
+      if (!trackId) { this.kmPerLap = 0; this.kmResult = ''; return; }
+      const opt = document.querySelector(`select[name="track_id"] option[value="${trackId}"]`);
+      const km = opt ? parseFloat(opt.dataset.km || 0) : 0;
+      this.kmPerLap = km;
+      this.calcKm();
+    },
+    roundChanged(e) {
+      const opt = e.target.options[e.target.selectedIndex];
+      const trackId = opt.dataset.track;
+      if (trackId) {
+        const trackSelect = document.querySelector('select[name="track_id"]');
+        if (trackSelect) {
+          trackSelect.value = trackId;
+          this.loadTrackKm(trackId);
+        }
+      }
+    },
+    calcKm() {
+      if (this.kmPerLap > 0 && this.laps) {
+        this.kmResult = (parseFloat(this.laps) * this.kmPerLap).toFixed(3);
+      }
+    }
+  }
+}
+</script>
+{% endblock %}

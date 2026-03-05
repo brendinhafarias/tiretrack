@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+{% block title %}Carros - Tire Management{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col">
+        <h1><i class="bi bi-car-front"></i> Carros</h1>
+        <p class="text-muted">Gerencie a frota de carros</p>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Lista de Carros</h5>
+            </div>
+            <div class="card-body">
+                {% if carros %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Nome</th>
+                                <th>Número</th>
+                                <th>Piloto</th>
+                                <th>Categoria</th>
+                                <th>Status</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for carro in carros %}
+                            <tr>
+                                <td><strong>{{ carro.nome }}</strong></td>
+                                <td>{{ carro.numero }}</td>
+                                <td>{{ carro.piloto }}</td>
+                                <td>{{ carro.categoria }}</td>
+                                <td>
+                                    <span class="badge {% if carro.status == 'Ativo' %}bg-success{% else %}bg-secondary{% endif %}">
+                                        {{ carro.status }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <button type="button" class="btn btn-sm btn-outline-primary" 
+                                            data-bs-toggle="modal" 
+                                            data-bs-target="#editModal{{ carro.id }}">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+                                    <form method="POST" action="{{ url_for('remover_carro', carro_id=carro.id) }}" 
+                                          style="display: inline;"
+                                          onsubmit="return confirm('Remover carro {{ carro.nome }}?');">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+
+                            <!-- Modal Editar -->
+                            <div class="modal fade" id="editModal{{ carro.id }}">
+                                <div class="modal-dialog">
+                                    <div class="modal-content">
+                                        <form method="POST" action="{{ url_for('editar_carro', carro_id=carro.id) }}">
+                                            <div class="modal-header">
+                                                <h5 class="modal-title">Editar {{ carro.nome }}</h5>
+                                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                            </div>
+                                            <div class="modal-body">
+                                                <div class="mb-3">
+                                                    <label class="form-label">Número</label>
+                                                    <input type="text" name="numero" class="form-control" 
+                                                           value="{{ carro.numero }}" required>
+                                                </div>
+                                                <div class="mb-3">
+                                                    <label class="form-label">Piloto</label>
+                                                    <input type="text" name="piloto" class="form-control" 
+                                                           value="{{ carro.piloto }}" required>
+                                                </div>
+                                                <div class="mb-3">
+                                                    <label class="form-label">Status</label>
+                                                    <select name="status" class="form-select">
+                                                        <option value="Ativo" {% if carro.status == 'Ativo' %}selected{% endif %}>Ativo</option>
+                                                        <option value="Inativo" {% if carro.status == 'Inativo' %}selected{% endif %}>Inativo</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                                <button type="submit" class="btn btn-primary">Salvar</button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="alert alert-info mb-0">
+                    <i class="bi bi-info-circle"></i> Nenhum carro cadastrado.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-plus-circle"></i> Novo Carro</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    <div class="mb-3">
+                        <label class="form-label">Nome <span class="text-danger">*</span></label>
+                        <input type="text" name="nome" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Número <span class="text-danger">*</span></label>
+                        <input type="text" name="numero" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Piloto <span class="text-danger">*</span></label>
+                        <input type="text" name="piloto" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Categoria</label>
+                        <input type="text" name="categoria" class="form-control" value="Stock Car">
+                    </div>
+                    <button type="submit" class="btn btn-success w-100">
+                        <i class="bi bi-check-circle"></i> Cadastrar
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

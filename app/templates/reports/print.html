@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Relatório — {{ rnd.name }}</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Arial', sans-serif; font-size: 10pt; color: #1a1a1a; background: #fff; }
+    .page-break { page-break-after: always; }
+
+    /* Cover */
+    .cover { background: #111827; color: white; min-height: 100vh; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding: 40px; }
+    .cover h1 { font-size: 32pt; color: #DC2626; font-weight: 900; letter-spacing: -1px; }
+    .cover h2 { font-size: 20pt; margin-top: 12px; color: #fff; }
+    .cover .meta { margin-top: 30px; color: #9ca3af; font-size: 12pt; line-height: 2; }
+    .cover .badge { display: inline-block; background: #DC2626; color: white; padding: 4px 14px; border-radius: 999px; font-size: 9pt; margin-top: 20px; }
+
+    /* Content */
+    .section { padding: 30px 40px; }
+    .section h2 { font-size: 16pt; color: #DC2626; border-bottom: 2px solid #DC2626; padding-bottom: 6px; margin-bottom: 16px; }
+    .section h3 { font-size: 12pt; margin-bottom: 10px; color: #1f2937; }
+
+    /* Tables */
+    table { width: 100%; border-collapse: collapse; margin-bottom: 16px; }
+    th { background: #1f2937; color: white; padding: 8px 10px; text-align: left; font-size: 8pt; text-transform: uppercase; }
+    td { padding: 7px 10px; border-bottom: 1px solid #e5e7eb; font-size: 9pt; }
+    tr:nth-child(even) td { background: #f9fafb; }
+
+    /* TWI colors */
+    .twi-green { color: #16a34a; font-weight: bold; }
+    .twi-yellow { color: #ca8a04; font-weight: bold; }
+    .twi-orange { color: #ea580c; font-weight: bold; }
+    .twi-red { color: #dc2626; font-weight: bold; }
+
+    /* TWI visual band */
+    .twi-bands { display: flex; gap: 4px; height: 80px; margin: 10px 0; }
+    .twi-band { flex: 1; border-radius: 4px; position: relative; overflow: hidden; background: #e5e7eb; display: flex; align-items: flex-end; }
+    .twi-fill { width: 100%; border-radius: 4px; }
+
+    /* Badges */
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 8pt; font-weight: 600; }
+    .badge-available { background: #dcfce7; color: #15803d; }
+    .badge-mounted { background: #dbeafe; color: #1d4ed8; }
+    .badge-blocked { background: #fee2e2; color: #dc2626; }
+    .badge-trash { background: #f3f4f6; color: #4b5563; }
+
+    .summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
+    .summary-card { border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px; text-align: center; }
+    .summary-card .num { font-size: 24pt; font-weight: 900; color: #DC2626; }
+    .summary-card .label { font-size: 8pt; color: #6b7280; margin-top: 2px; }
+
+    @media print { .no-print { display: none; } }
+  </style>
+</head>
+<body>
+
+<!-- Print Button -->
+<div class="no-print" style="position:fixed;top:16px;right:16px;z-index:100;">
+  <button onclick="window.print()" style="background:#DC2626;color:white;border:none;padding:10px 20px;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;">
+    🖨️ Imprimir / Salvar PDF
+  </button>
+  <button onclick="window.close()" style="background:#374151;color:white;border:none;padding:10px 20px;border-radius:8px;cursor:pointer;font-size:14px;margin-left:8px;">
+    Fechar
+  </button>
+</div>
+
+<!-- Cover -->
+<div class="cover page-break">
+  <div class="badge">RELATÓRIO DE ETAPA</div>
+  <h1>TireTrack Pro</h1>
+  <h2>{{ rnd.name }}</h2>
+  <div class="meta">
+    <div><strong>Equipe:</strong> {{ rnd.team.name }}</div>
+    <div><strong>Piloto:</strong> {{ rnd.driver.name if rnd.driver else '—' }}</div>
+    <div><strong>Pista:</strong> {{ rnd.track.name if rnd.track else '—' }}</div>
+    {% if rnd.start_date %}
+    <div><strong>Período:</strong> {{ rnd.start_date.strftime('%d/%m/%Y') }}{% if rnd.end_date %} → {{ rnd.end_date.strftime('%d/%m/%Y') }}{% endif %}</div>
+    {% endif %}
+    <div><strong>Status:</strong> {{ 'Aberta' if rnd.status == 'open' else 'Encerrada' }}</div>
+  </div>
+</div>
+
+<!-- Executive Summary -->
+<div class="section page-break">
+  <h2>Resumo Executivo</h2>
+  <div class="summary-grid">
+    <div class="summary-card"><div class="num">{{ total_tires }}</div><div class="label">Pneus usados</div></div>
+    <div class="summary-card"><div class="num">{{ total_sessions }}</div><div class="label">Sessões</div></div>
+    <div class="summary-card"><div class="num">{{ '%.0f'|format(total_km_round) }}</div><div class="label">Km total na etapa</div></div>
+    <div class="summary-card"><div class="num">{{ discarded|length }}</div><div class="label">Pneus descartados</div></div>
+  </div>
+
+  <h3>Estado dos Pneus</h3>
+  <table>
+    <tr>
+      <th>Pneu</th>
+      <th>Tipo</th>
+      <th>TWI Inicial %</th>
+      <th>TWI Final %</th>
+      <th>Km Etapa</th>
+      <th>Voltas</th>
+      <th>Status Final</th>
+    </tr>
+    {% for td in tires_data %}
+    {% set first = td.first_session %}
+    {% set last = td.last_session %}
+    <tr>
+      <td><strong>{{ td.tire.code }}</strong></td>
+      <td>{{ 'Chuva' if td.tire.tire_type == 'wet' else 'Slick' }}</td>
+      <td>
+        {% if first %}
+        {% set p = first.twi_pct_avg or 100 %}
+        <span class="{{ 'twi-green' if p >= 70 else 'twi-yellow' if p >= 40 else 'twi-orange' if p >= 20 else 'twi-red' }}">
+          {{ '%.0f'|format(p) }}%
+        </span>
+        {% else %}—{% endif %}
+      </td>
+      <td>
+        {% if last %}
+        {% set p = last.twi_pct_avg or 100 %}
+        <span class="{{ 'twi-green' if p >= 70 else 'twi-yellow' if p >= 40 else 'twi-orange' if p >= 20 else 'twi-red' }}">
+          {{ '%.0f'|format(p) }}%
+        </span>
+        {% else %}—{% endif %}
+      </td>
+      <td>{{ '%.1f'|format(td.total_km) }} km</td>
+      <td>{{ td.total_laps }}</td>
+      <td>
+        <span class="badge badge-{{ td.tire.status }}">
+          {{ {'available':'Disponível','mounted':'Montado','blocked':'Bloqueado','trash':'Descartado'}.get(td.tire.status, td.tire.status) }}
+        </span>
+      </td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+
+<!-- Sessions detail -->
+<div class="section page-break">
+  <h2>Sessões Detalhadas</h2>
+  {% for td in tires_data %}
+  <h3>Pneu {{ td.tire.code }} — {{ 'Chuva' if td.tire.tire_type == 'wet' else 'Slick' }} · {{ td.tire.compound }}</h3>
+  <table>
+    <tr>
+      <th>Data</th>
+      <th>Pista</th>
+      <th>Tipo</th>
+      <th>Pos.</th>
+      <th>Voltas</th>
+      <th>Km Sess.</th>
+      <th>INT</th>
+      <th>C-I</th>
+      <th>C-E</th>
+      <th>EXT</th>
+      <th>TWI%</th>
+    </tr>
+    {% for s in td.sessions %}
+    {% set p = s.twi_pct_avg or 100 %}
+    <tr>
+      <td>{{ s.date.strftime('%d/%m/%Y') }}</td>
+      <td>{{ s.track.name if s.track else '—' }}</td>
+      <td>{{ s.event_type_label }}</td>
+      <td>{{ s.position or '—' }}</td>
+      <td>{{ s.laps }}</td>
+      <td>{{ '%.1f'|format(s.km_session) }}</td>
+      <td>{{ '%.1f'|format(s.twi_int) }}</td>
+      <td>{{ '%.1f'|format(s.twi_ci) }}</td>
+      <td>{{ '%.1f'|format(s.twi_co) }}</td>
+      <td>{{ '%.1f'|format(s.twi_ext) }}</td>
+      <td><span class="{{ 'twi-green' if p >= 70 else 'twi-yellow' if p >= 40 else 'twi-orange' if p >= 20 else 'twi-red' }}">{{ '%.0f'|format(p) }}%</span></td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% endfor %}
+</div>
+
+<!-- Observations -->
+{% if all_obs %}
+<div class="section page-break">
+  <h2>Observações</h2>
+  {% for item in all_obs %}
+  <div style="border:1px solid #e5e7eb;border-radius:8px;padding:12px;margin-bottom:10px;">
+    <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+      <strong>Pneu {{ item.tire.code }}</strong>
+      <span>{{ item.obs.action_label }} · {{ item.obs.created_at.strftime('%d/%m/%Y %H:%M') }} · {{ item.obs.author.username }}</span>
+    </div>
+    <div>{{ item.obs.text }}</div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<!-- Discarded tires -->
+{% if discarded %}
+<div class="section">
+  <h2>Pneus Descartados na Etapa</h2>
+  <table>
+    <tr><th>Pneu</th><th>Tipo</th><th>Km Total</th><th>Motivo</th></tr>
+    {% for item in discarded %}
+    <tr>
+      <td><strong>{{ item.tire.code }}</strong></td>
+      <td>{{ 'Chuva' if item.tire.tire_type == 'wet' else 'Slick' }}</td>
+      <td>{{ '%.0f'|format(item.tire.total_km or 0) }} km</td>
+      <td>{{ item.obs.text if item.obs else '—' }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+{% endif %}
+
+<div style="text-align:center;padding:20px;color:#9ca3af;font-size:8pt;">
+  TireTrack Pro — Relatório gerado em {{ generated_at }}
+</div>
+</body>
+</html>

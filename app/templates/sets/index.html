@@ -1,0 +1,505 @@
+{% extends 'base.html' %}
+{% block title %}Sets{% endblock %}
+
+{% block breadcrumb %}
+<span class="text-gray-600 mx-2">/</span>
+<span class="text-gray-300 text-sm">Sets</span>
+{% endblock %}
+
+{% block content %}
+<!-- Root Alpine component — manages all modals + side preview -->
+<div x-data="{
+  newSetModal: false,
+  swapModal: null,
+  swapPos: '',
+  preview: null,
+  previewLoading: false,
+  showPreview(tireId) {
+    this.previewLoading = true;
+    this.preview = null;
+    fetch('/api/tire/' + tireId + '/preview')
+      .then(r => r.json())
+      .then(d => {
+        this.preview = d;
+        this.previewLoading = false;
+        this.$nextTick(() => this.renderTwiChart(d));
+      })
+      .catch(() => { this.previewLoading = false; });
+  },
+  renderTwiChart(d) {
+    const canvas = document.getElementById('drawerTwiCanvas');
+    if (!canvas) return;
+    const pct = v => v != null ? v.toFixed(1) + ' mm' : '—';
+    new Chart(canvas, {
+      type: 'line',
+      data: {
+        labels: ['INT', 'C-INT', 'C-EXT', 'EXT'],
+        datasets: [
+          {
+            label: 'Inicial',
+            data: [d.twi_initial_int, d.twi_initial_ci, d.twi_initial_co, d.twi_initial_ext],
+            borderColor: '#6b7280',
+            backgroundColor: 'transparent',
+            borderDash: [5, 3],
+            borderWidth: 1.5,
+            pointRadius: 4,
+            tension: 0.3,
+          },
+          {
+            label: 'Atual',
+            data: [d.twi_int, d.twi_ci, d.twi_co, d.twi_ext],
+            borderColor: d.current_twi_pct >= 70 ? '#16a34a' : d.current_twi_pct >= 40 ? '#ca8a04' : d.current_twi_pct >= 20 ? '#ea580c' : '#dc2626',
+            backgroundColor: d.current_twi_pct >= 70 ? 'rgba(22,163,74,0.15)' : d.current_twi_pct >= 40 ? 'rgba(202,138,4,0.15)' : d.current_twi_pct >= 20 ? 'rgba(234,88,12,0.15)' : 'rgba(220,38,38,0.15)',
+            fill: true,
+            borderWidth: 2.5,
+            pointRadius: 6,
+            pointHoverRadius: 8,
+            tension: 0.3,
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: { labels: { color: '#9ca3af', boxWidth: 16, font: { size: 11 } } },
+          tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': ' + pct(ctx.parsed.y) } }
+        },
+        scales: {
+          x: { ticks: { color: '#d1d5db', font: { size: 12, weight: 'bold' } }, grid: { color: '#374151' } },
+          y: { ticks: { color: '#6b7280', callback: v => v.toFixed(1) + ' mm' }, grid: { color: '#374151' } }
+        }
+      }
+    });
+  }
+}" class="space-y-5">
+
+  <!-- Header -->
+  <div class="flex items-center justify-between">
+    <h1 class="text-2xl font-bold text-white">Gestão de Sets</h1>
+    {% if current_user.can_write %}
+    <button @click="newSetModal = true"
+            class="bg-red-600 hover:bg-red-700 text-white font-semibold px-5 py-2.5 rounded-xl min-h-[44px]">
+      + Novo Set
+    </button>
+    {% endif %}
+  </div>
+
+  <!-- Driver filter -->
+  <form method="GET" class="flex gap-2">
+    <select name="driver_id" onchange="this.form.submit()"
+            class="bg-gray-800 border border-gray-600 text-white text-sm rounded-lg px-3 py-2 focus:border-red-500 focus:outline-none min-h-[44px]">
+      <option value="">Todos os pilotos</option>
+      {% for d in drivers %}
+      <option value="{{ d.id }}" {{ 'selected' if selected_driver == d.id }}>{{ d.name }}</option>
+      {% endfor %}
+    </select>
+  </form>
+
+  <!-- Active sets -->
+  <div>
+    <h2 class="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-3">Sets Ativos ({{ active_sets|length }})</h2>
+    {% if active_sets %}
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      {% for s in active_sets %}
+      <div class="bg-gray-800 rounded-xl p-5 border border-gray-700 space-y-4">
+        <div class="flex items-start justify-between">
+          <div>
+            <div class="font-bold text-white text-lg">{{ s.name }}</div>
+            <div class="text-sm text-gray-400">{{ s.driver.name if s.driver else '—' }} · montado {{ s.created_at.strftime('%d/%m/%Y') }}</div>
+          </div>
+          <span class="text-xs bg-blue-900 text-blue-300 px-2 py-1 rounded-full">Ativo</span>
+        </div>
+
+        <!-- 4 tire positions -->
+        <div class="grid grid-cols-2 gap-2">
+          {% for pos_data in s.tires_with_position %}
+          {% set pos = pos_data.position %}
+          {% set t = pos_data.tire %}
+          <div class="bg-gray-900 rounded-lg p-3 border border-gray-700">
+            <div class="flex items-center justify-between mb-1">
+              <span class="text-xs font-bold text-gray-400 bg-gray-800 px-2 py-0.5 rounded">{{ pos }}</span>
+              {% if t and current_user.can_write %}
+              <button @click="swapModal = {{ s.id }}; swapPos = '{{ pos }}'"
+                      class="text-xs text-gray-500 hover:text-yellow-400 transition-colors">trocar</button>
+              {% endif %}
+            </div>
+            {% if t %}
+            <div class="font-mono text-white font-bold text-sm cursor-pointer hover:text-blue-400 transition-colors"
+                 @click="showPreview({{ t.id }})">
+              {{ t.code }}
+              <span class="text-xs font-normal text-gray-500 ml-1">🔍</span>
+            </div>
+            {% set pct = t.current_twi_pct or 100 %}
+            <div class="mt-1.5 flex items-center gap-2">
+              <div class="flex-1 bg-gray-700 rounded-full h-1.5">
+                <div class="h-1.5 rounded-full {{ 'bg-green-500' if pct >= 70 else 'bg-yellow-500' if pct >= 40 else 'bg-orange-500' if pct >= 20 else 'bg-red-500' }}"
+                     style="width: {{ [pct, 100]|min }}%"></div>
+              </div>
+              <span class="text-xs font-bold w-9 text-right flex-shrink-0
+                           {{ 'text-green-400' if pct >= 70 else 'text-yellow-400' if pct >= 40 else 'text-orange-400' if pct >= 20 else 'text-red-400' }}">
+                {{ '%.0f'|format(pct) }}%
+              </span>
+            </div>
+            <div class="text-xs text-gray-500 mt-0.5">{{ '%.0f'|format(t.total_km or 0) }}km · {{ t.total_laps or 0 }}v</div>
+            <!-- Mini TWI readings -->
+            <div class="grid grid-cols-4 gap-0.5 mt-1.5 text-center">
+              {% for curr, init in [
+                (t.current_twi_int, t.twi_initial_int),
+                (t.current_twi_ci, t.twi_initial_ci),
+                (t.current_twi_co, t.twi_initial_co),
+                (t.current_twi_ext, t.twi_initial_ext)
+              ] %}
+              {% set cp = ((curr / init) * 100) if (curr and init) else 100 %}
+              <div class="text-xs font-mono {{ 'text-green-500' if cp >= 70 else 'text-yellow-500' if cp >= 40 else 'text-orange-500' if cp >= 20 else 'text-red-500' }}">
+                {{ '%.1f'|format(curr) if curr else '—' }}
+              </div>
+              {% endfor %}
+            </div>
+            {% else %}
+            <div class="text-gray-600 text-sm mt-1">Posição vazia</div>
+            {% endif %}
+          </div>
+          {% endfor %}
+        </div>
+
+        <!-- Actions -->
+        {% if current_user.can_write %}
+        <div class="flex gap-2 pt-1">
+          <a href="{{ url_for('sets.session_new', set_id=s.id) }}"
+             class="flex-1 text-center py-2.5 bg-red-600 hover:bg-red-700 text-white text-sm font-semibold rounded-lg min-h-[44px] flex items-center justify-center gap-1">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+            </svg>
+            Registrar Saída
+          </a>
+          <form method="POST" action="{{ url_for('sets.dismantle', set_id=s.id) }}"
+                onsubmit="return confirm('Desmontar set {{ s.name }}? Os pneus voltarão para disponível.')"
+                class="flex-1">
+            <button type="submit"
+                    class="w-full py-2.5 bg-gray-700 hover:bg-red-900 text-gray-300 hover:text-white text-sm rounded-lg min-h-[44px] transition-colors">
+              Desmontar
+            </button>
+          </form>
+        </div>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="bg-gray-800 rounded-xl border border-gray-700 p-8 text-center text-gray-400">
+      Nenhum set ativo.
+      {% if current_user.can_write %}
+      <button @click="newSetModal = true" class="ml-2 text-red-400 hover:text-red-300">Criar um set</button>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Recent dismounted sets -->
+  {% if dismounted_sets %}
+  <div>
+    <h2 class="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-3">Desmontados Recentes</h2>
+    <div class="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="bg-gray-900 text-gray-400 text-xs uppercase border-b border-gray-700">
+            <th class="px-4 py-3 text-left">Nome</th>
+            <th class="px-4 py-3 text-left hidden sm:table-cell">Piloto</th>
+            <th class="px-4 py-3 text-left hidden md:table-cell">Montado</th>
+            <th class="px-4 py-3 text-left hidden md:table-cell">Desmontado</th>
+            <th class="px-4 py-3 text-left">Pneus</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-700">
+          {% for s in dismounted_sets %}
+          <tr class="hover:bg-gray-750">
+            <td class="px-4 py-3 text-gray-200 font-medium">{{ s.name }}</td>
+            <td class="px-4 py-3 text-gray-400 hidden sm:table-cell">{{ s.driver.name if s.driver else '—' }}</td>
+            <td class="px-4 py-3 text-gray-400 text-xs hidden md:table-cell">{{ s.created_at.strftime('%d/%m/%Y') }}</td>
+            <td class="px-4 py-3 text-gray-400 text-xs hidden md:table-cell">{{ s.dismounted_at.strftime('%d/%m/%Y') if s.dismounted_at else '—' }}</td>
+            <td class="px-4 py-3">
+              <div class="flex flex-wrap gap-1">
+                {% for t in s.tires %}
+                <span class="text-xs font-mono bg-gray-700 text-gray-300 px-1.5 py-0.5 rounded cursor-pointer hover:text-blue-400"
+                      @click="showPreview({{ t.id }})">{{ t.code }}</span>
+                {% endfor %}
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+
+
+  <!-- ===================== SIDE PREVIEW DRAWER ===================== -->
+  <!-- Overlay -->
+  <div x-show="preview !== null || previewLoading"
+       x-cloak
+       @click="preview = null; previewLoading = false"
+       class="fixed inset-0 bg-black/50 transition-opacity" style="z-index:60"
+       x-transition:enter="transition-opacity duration-200"
+       x-transition:leave="transition-opacity duration-200">
+  </div>
+
+  <!-- Drawer -->
+  <div x-show="preview !== null || previewLoading"
+       x-cloak
+       class="fixed right-0 top-0 bottom-0 w-full max-w-sm bg-gray-900 border-l border-gray-700 flex flex-col overflow-hidden shadow-2xl" style="z-index:70"
+       x-transition:enter="transition-transform duration-300"
+       x-transition:enter-start="translate-x-full"
+       x-transition:enter-end="translate-x-0"
+       x-transition:leave="transition-transform duration-300"
+       x-transition:leave-start="translate-x-0"
+       x-transition:leave-end="translate-x-full">
+
+    <!-- Drawer header -->
+    <div class="flex items-center justify-between px-5 py-4 border-b border-gray-700 flex-shrink-0">
+      <h3 class="font-bold text-white text-lg" x-text="preview ? 'Pneu ' + preview.code : 'Carregando...'">Preview</h3>
+      <button @click="preview = null; previewLoading = false"
+              class="text-gray-400 hover:text-white text-2xl leading-none w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-700">
+        ✕
+      </button>
+    </div>
+
+    <!-- Loading state -->
+    <div x-show="previewLoading" class="flex-1 flex items-center justify-center">
+      <div class="text-gray-400 text-sm">Carregando...</div>
+    </div>
+
+    <!-- Content -->
+    <div x-show="preview && !previewLoading" class="flex-1 overflow-y-auto">
+      <template x-if="preview">
+        <div class="p-5 space-y-5">
+
+          <!-- Status + type badges -->
+          <div class="flex flex-wrap gap-2">
+            <span class="text-xs px-2.5 py-1 rounded-full font-medium"
+                  :class="{
+                    'bg-green-900 text-green-300': preview.status === 'available',
+                    'bg-blue-900 text-blue-300': preview.status === 'mounted',
+                    'bg-red-900 text-red-300': preview.status === 'blocked',
+                    'bg-gray-700 text-gray-400': preview.status === 'trash'
+                  }"
+                  x-text="{'available':'Disponível','mounted':'Montado','blocked':'Bloqueado','trash':'Descartado'}[preview.status] || preview.status">
+            </span>
+            <span class="text-xs px-2.5 py-1 rounded-full bg-gray-700 text-gray-300" x-text="preview.tire_type === 'wet' ? 'Chuva' : 'Slick'"></span>
+            <span class="text-xs px-2.5 py-1 rounded-full bg-gray-700 text-gray-300" x-text="preview.compound"></span>
+          </div>
+
+          <!-- Photos -->
+          <template x-if="preview.photos && preview.photos.length > 0">
+            <div class="grid grid-cols-3 gap-1.5">
+              <template x-for="(ph, i) in preview.photos" :key="i">
+                <a :href="ph.url" target="_blank" class="block">
+                  <img :src="ph.thumb" class="w-full h-20 object-cover rounded-lg border border-gray-700 hover:opacity-80 transition-opacity">
+                </a>
+              </template>
+            </div>
+          </template>
+
+          <!-- Key stats -->
+          <div class="grid grid-cols-2 gap-3">
+            <div class="bg-gray-800 rounded-xl p-3 border border-gray-700">
+              <div class="text-xl font-bold text-white" x-text="preview.total_km + ' km'"></div>
+              <div class="text-xs text-gray-400">Km total</div>
+            </div>
+            <div class="bg-gray-800 rounded-xl p-3 border border-gray-700">
+              <div class="text-xl font-bold text-white" x-text="preview.total_laps + ' voltas'"></div>
+              <div class="text-xs text-gray-400">Total de voltas</div>
+            </div>
+          </div>
+
+          <!-- TWI Profile Chart -->
+          <div class="bg-gray-800 rounded-xl p-4 border border-gray-700">
+            <div class="flex items-center justify-between mb-3">
+              <div class="text-xs font-semibold text-gray-400 uppercase tracking-wide">Perfil de Desgaste TWI</div>
+              <span class="text-sm font-bold"
+                    :class="preview.current_twi_pct >= 70 ? 'text-green-400' : preview.current_twi_pct >= 40 ? 'text-yellow-400' : preview.current_twi_pct >= 20 ? 'text-orange-400' : 'text-red-400'"
+                    x-text="preview.current_twi_pct.toFixed(0) + '%'">
+              </span>
+            </div>
+            <canvas id="drawerTwiCanvas" height="160"></canvas>
+          </div>
+
+          <!-- Pistas usadas -->
+          <div class="bg-gray-800 rounded-xl p-4 border border-gray-700">
+            <div class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Pistas usadas</div>
+            <template x-if="preview.tracks.length > 0">
+              <div class="space-y-1.5">
+                <template x-for="t in preview.tracks" :key="t.name">
+                  <div class="flex items-center justify-between text-sm">
+                    <span class="text-gray-300 truncate flex-1 mr-2" x-text="t.name"></span>
+                    <span class="text-gray-500 text-xs flex-shrink-0" x-text="t.km + ' km (' + t.sessions + ' sessões)'"></span>
+                  </div>
+                </template>
+              </div>
+            </template>
+            <template x-if="preview.tracks.length === 0">
+              <div class="text-gray-600 text-sm">Sem pistas registradas</div>
+            </template>
+          </div>
+
+          <!-- Posições usadas -->
+          <div x-show="preview.positions.length > 0" class="bg-gray-800 rounded-xl p-4 border border-gray-700">
+            <div class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Posições no carro</div>
+            <div class="flex gap-2">
+              <template x-for="pos in preview.positions" :key="pos">
+                <span class="text-sm font-bold font-mono bg-gray-700 text-gray-200 px-3 py-1.5 rounded-lg" x-text="pos"></span>
+              </template>
+            </div>
+          </div>
+
+          <!-- Last sessions -->
+          <div x-show="preview.sessions.length > 0" class="bg-gray-800 rounded-xl p-4 border border-gray-700">
+            <div class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Últimas sessões</div>
+            <div class="space-y-2">
+              <template x-for="(s, i) in preview.sessions" :key="i">
+                <div class="flex items-center gap-2 text-xs text-gray-300 bg-gray-900 rounded-lg px-3 py-2">
+                  <span class="text-gray-500 flex-shrink-0 w-16" x-text="s.date"></span>
+                  <span class="text-gray-400 flex-shrink-0 w-6 font-mono" x-text="s.position"></span>
+                  <span class="text-gray-300 truncate flex-1" x-text="s.track"></span>
+                  <span class="flex-shrink-0 font-bold"
+                        :class="s.twi_pct >= 70 ? 'text-green-400' : s.twi_pct >= 40 ? 'text-yellow-400' : s.twi_pct >= 20 ? 'text-orange-400' : 'text-red-400'"
+                        x-text="s.twi_pct + '%'">
+                  </span>
+                </div>
+              </template>
+            </div>
+          </div>
+
+          <!-- Link to detail -->
+          <a :href="'/tires/' + preview.id"
+             class="block w-full text-center py-3 bg-gray-700 hover:bg-gray-600 text-white font-medium rounded-xl min-h-[44px] transition-colors">
+            Ver histórico completo →
+          </a>
+
+        </div>
+      </template>
+    </div>
+  </div>
+
+
+  <!-- ===================== New Set Modal ===================== -->
+  <div x-show="newSetModal" x-cloak
+       class="fixed inset-0 bg-black/70 z-50 flex items-end sm:items-center justify-center p-4"
+       @click.self="newSetModal = false">
+    <div class="bg-gray-800 rounded-2xl w-full max-w-lg border border-gray-700 max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between px-6 pt-6 pb-4 border-b border-gray-700">
+        <h3 class="text-xl font-bold text-white">Montar Novo Set</h3>
+        <button @click="newSetModal = false" class="text-gray-400 hover:text-white text-2xl leading-none">✕</button>
+      </div>
+
+      <form method="POST" action="{{ url_for('sets.new') }}" class="p-6 space-y-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-300 mb-2">Nome do Set *</label>
+          <input type="text" name="name" required placeholder="ex: Set-A Corrida 1"
+                 class="w-full px-4 py-3 bg-gray-900 border border-gray-600 rounded-xl text-white
+                        focus:outline-none focus:border-red-500 text-base min-h-[48px]">
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-300 mb-2">Piloto *</label>
+          <select name="driver_id" required
+                  class="w-full px-4 py-3 bg-gray-900 border border-gray-600 rounded-xl text-white
+                         focus:outline-none focus:border-red-500 text-base min-h-[48px]">
+            <option value="">Selecionar...</option>
+            {% for d in drivers %}
+            <option value="{{ d.id }}">{{ d.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <!-- 4 positions — each with preview button -->
+        {% for pos_id, pos_label in [('de','DE — Diant. Esq.'),('dd','DD — Diant. Dir.'),('te','TE — Tras. Esq.'),('td','TD — Tras. Dir.')] %}
+        <div>
+          <label class="block text-sm font-medium text-gray-300 mb-1.5">{{ pos_label }} *</label>
+          <div class="flex gap-2">
+            <select name="tire_{{ pos_id }}_id" required
+                    @change="$event.target.value ? null : null"
+                    class="flex-1 px-3 py-2.5 bg-gray-900 border border-gray-600 rounded-xl text-white
+                           focus:outline-none focus:border-red-500 text-sm min-h-[44px]">
+              <option value="">Selecionar pneu...</option>
+              {% for t in available_tires %}
+              {% set pct = t.current_twi_pct or 100 %}
+              <option value="{{ t.id }}">
+                {{ t.code }}
+                ({{ '%.0f'|format(t.total_km or 0) }}km · {{ '%.0f'|format(pct) }}%{% if pct < 20 %} ⚠️{% endif %})
+              </option>
+              {% endfor %}
+            </select>
+            <button type="button"
+                    @click="() => {
+                      const sel = $el.previousElementSibling;
+                      if (sel.value) showPreview(parseInt(sel.value));
+                    }"
+                    class="px-3 py-2 bg-gray-700 hover:bg-gray-600 text-gray-300 hover:text-white rounded-xl text-xs min-h-[44px] flex-shrink-0 transition-colors"
+                    title="Ver histórico do pneu selecionado">
+              🔍
+            </button>
+          </div>
+        </div>
+        {% endfor %}
+
+        <p class="text-xs text-gray-600">Clique em 🔍 para ver o histórico e TWI do pneu selecionado antes de confirmar.</p>
+
+        <div class="flex gap-3 pt-2">
+          <button type="button" @click="newSetModal = false"
+                  class="flex-1 py-3 bg-gray-700 hover:bg-gray-600 text-white font-medium rounded-xl min-h-[48px]">
+            Cancelar
+          </button>
+          <button type="submit"
+                  class="flex-1 py-3 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-xl min-h-[48px]">
+            Montar Set
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+
+  <!-- ===================== Swap Tire Modal ===================== -->
+  <div x-show="swapModal !== null" x-cloak
+       class="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4"
+       @click.self="swapModal = null">
+    <div class="bg-gray-800 rounded-2xl p-6 w-full max-w-md border border-gray-700">
+      <div class="flex items-center justify-between mb-5">
+        <h3 class="text-xl font-bold text-white">Trocar Pneu</h3>
+        <button @click="swapModal = null" class="text-gray-400 hover:text-white text-2xl leading-none">✕</button>
+      </div>
+      <form method="POST" :action="`/sets/${swapModal}/swap`" class="space-y-4">
+        <input type="hidden" name="position" :value="swapPos">
+        <div>
+          <label class="block text-sm font-medium text-gray-300 mb-2">
+            Novo pneu para posição <span x-text="swapPos" class="font-bold text-white"></span>
+          </label>
+          <div class="flex gap-2">
+            <select name="new_tire_id" required id="swap-select"
+                    class="flex-1 px-4 py-3 bg-gray-900 border border-gray-600 rounded-xl text-white focus:outline-none focus:border-red-500 min-h-[48px]">
+              <option value="">Selecionar pneu disponível...</option>
+              {% for t in available_tires %}
+              {% set pct = t.current_twi_pct or 100 %}
+              <option value="{{ t.id }}">{{ t.code }} — {{ '%.0f'|format(t.total_km or 0) }}km · {{ '%.0f'|format(pct) }}%</option>
+              {% endfor %}
+            </select>
+            <button type="button"
+                    @click="() => { const v = document.getElementById('swap-select').value; if(v) showPreview(parseInt(v)); }"
+                    class="px-3 py-2 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-xl min-h-[48px] flex-shrink-0">
+              🔍
+            </button>
+          </div>
+        </div>
+        <div class="flex gap-3">
+          <button type="button" @click="swapModal = null"
+                  class="flex-1 py-3 bg-gray-700 text-white rounded-xl min-h-[48px]">Cancelar</button>
+          <button type="submit"
+                  class="flex-1 py-3 bg-yellow-600 hover:bg-yellow-700 text-white font-semibold rounded-xl min-h-[48px]">Trocar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

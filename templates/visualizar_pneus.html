@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% block title %}Pneus - Tire Management{% endblock %}
+
+{% block content %}
+<div class="page-header mb-4">
+    <div>
+        <h1 class="page-title"><i class="fas fa-circle-notch"></i> Pneus</h1>
+        <p class="text-muted">Visualize e gerencie o estoque de pneus</p>
+    </div>
+</div>
+
+<!-- TABELA DE PNEUS -->
+<div class="table-container">
+    <div class="table-header">
+        <h3><i class="fas fa-list"></i> Estoque de Pneus</h3>
+        <span class="badge badge-info">{{ pneus|length }} pneus</span>
+    </div>
+
+    {% if pneus %}
+    <div class="table-responsive">
+        <table class="modern-table" data-sortable>
+            <thead>
+                <tr>
+                    <th data-sort="nome">Nome</th>
+                    <th data-sort="codigo">Código</th>
+                    <th data-sort="carro">Carro</th>
+                    <th data-sort="status">Status</th>
+                    <th data-sort="condicao">Condição</th>
+                    <th data-sort="km">KM Atual</th>
+                    <th data-sort="profundidade">Prof. Inicial</th>
+                    <th data-sort="data">Cadastrado</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for pneu in pneus %}
+                <tr>
+                    <td data-value="nome"><strong>{{ pneu.nome }}</strong></td>
+                    <td data-value="codigo"><code>{{ pneu.codigo_barras }}</code></td>
+                    <td data-value="carro">{{ pneu.carro.nome }}</td>
+                    <td data-value="status">
+                        {% if pneu.status == 'Disponível' %}
+                            <span class="badge badge-ok">{{ pneu.status }}</span>
+                        {% elif pneu.status == 'Montado' %}
+                            <span class="badge badge-info">{{ pneu.status }}</span>
+                        {% else %}
+                            <span class="badge badge-neutral">{{ pneu.status }}</span>
+                        {% endif %}
+                    </td>
+                    <td data-value="condicao">
+                        {% if pneu.condicao == 'Novo' %}
+                            <span class="badge badge-ok">{{ pneu.condicao }}</span>
+                        {% else %}
+                            <span class="badge badge-warning">{{ pneu.condicao }}</span>
+                        {% endif %}
+                    </td>
+                    <td data-value="km">
+                        <strong>{{ "%.2f"|format(pneu.quilometragem_atual) }}</strong> / {{ pneu.limite_km }} km
+                        <br>
+                        {% set km_percent = (pneu.quilometragem_atual / pneu.limite_km * 100) %}
+                        <div class="progress" style="height: 4px; margin-top: 4px;">
+                            <div class="progress-bar {% if km_percent < 80 %}bg-success{% elif km_percent < 100 %}bg-warning{% else %}bg-danger{% endif %}" 
+                                 style="width: {{ km_percent if km_percent <= 100 else 100 }}%">
+                            </div>
+                        </div>
+                    </td>
+                    <td data-value="profundidade">{{ "%.1f"|format(pneu.profundidade_inicial) }} mm</td>
+                    <td data-value="data">{{ pneu.data_cadastro.strftime('%d/%m/%Y') }}</td>
+                    <td>
+                        {% if pneu.status != 'Descartado' %}
+                        <a href="{{ url_for('historico_pneu', pneu_id=pneu.id) }}" 
+                           class="btn btn-outline btn-sm" 
+                           title="Ver histórico">
+                            <i class="fas fa-history"></i>
+                        </a>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div style="padding: 3rem; text-align: center;">
+        <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+        <h4>Nenhum pneu cadastrado</h4>
+        <p class="text-muted mb-4">Comece adicionando pneus ao sistema</p>
+        <a href="{{ url_for('comprar_pneus') }}" class="btn btn-primary">
+            <i class="fas fa-plus"></i> Adicionar Pneus
+        </a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
