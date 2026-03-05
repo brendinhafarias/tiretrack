@@ -1,1 +1,1 @@
-web: find / -name "gunicorn" 2>/dev/null && python run.py
+web: python -m gunicorn run:app --bind 0.0.0.0:8080 --workers 2
