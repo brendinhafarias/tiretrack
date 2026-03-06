@@ -1,1 +1,1 @@
-web: /app/.venv/bin/waitress-serve --host=0.0.0.0 --port=8080 run:app
+web: /app/.venv/bin/python run.py
