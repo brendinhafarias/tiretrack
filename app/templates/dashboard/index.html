@@ -36,7 +36,7 @@
      @click.outside="openFilter = null">
   <form method="GET" id="filter-form" class="flex flex-wrap gap-2 items-center">
     <!-- Preserve sort -->
-    <input type="hidden" name="sort" value="{{ sort }}">
+    <input type="hidden" name="sort" id="sort-input" value="{{ sort }}">
 
     <!-- Driver dropdown (single select) -->
     <select name="driver_id" onchange="this.form.submit()"
@@ -130,11 +130,11 @@
 
     <!-- Sort -->
     <div class="flex gap-1 ml-auto flex-shrink-0">
-      <button type="submit" name="sort" value="twi"
+      <button type="button" onclick="document.getElementById('sort-input').value='twi'; document.getElementById('filter-form').submit()"
               class="text-xs px-3 py-2 rounded-lg min-h-[44px] flex items-center {{ 'bg-red-600 text-white' if sort == 'twi' else 'bg-gray-700 text-gray-300 hover:bg-gray-600' }}">
         TWI%↑
       </button>
-      <button type="submit" name="sort" value="km"
+      <button type="button" onclick="document.getElementById('sort-input').value='km'; document.getElementById('filter-form').submit()"
               class="text-xs px-3 py-2 rounded-lg min-h-[44px] flex items-center {{ 'bg-red-600 text-white' if sort == 'km' else 'bg-gray-700 text-gray-300 hover:bg-gray-600' }}">
         Km↓
       </button>
