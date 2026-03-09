@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="pt-BR" class="dark">
+<html lang="pt-BR" class="dark" id="html-root">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -40,7 +40,61 @@
     .sidebar-link:hover { background:#374151; }
     .sidebar-link.active { background:#DC2626;color:#fff; }
     @media print { .no-print{display:none!important;} }
+
+    /* ── Light mode overrides ── */
+    html.light body { background-color: #f1f5f9; color: #0f172a; }
+    html.light ::-webkit-scrollbar-track { background: #e2e8f0; }
+    html.light ::-webkit-scrollbar-thumb { background: #94a3b8; }
+    html.light .sidebar-link:hover { background: #e2e8f0 !important; }
+
+    html.light .bg-gray-900 { background-color: #ffffff !important; }
+    html.light .bg-gray-800 { background-color: #f8fafc !important; }
+    html.light .bg-gray-700 { background-color: #f1f5f9 !important; }
+    html.light .bg-gray-600 { background-color: #e2e8f0 !important; }
+    html.light .hover\:bg-gray-600:hover { background-color: #e2e8f0 !important; }
+    html.light .hover\:bg-gray-500:hover { background-color: #cbd5e1 !important; }
+    html.light .hover\:bg-gray-700:hover { background-color: #f1f5f9 !important; }
+
+    html.light .text-white  { color: #0f172a !important; }
+    html.light .text-gray-100 { color: #1e293b !important; }
+    html.light .text-gray-200 { color: #334155 !important; }
+    html.light .text-gray-300 { color: #475569 !important; }
+    html.light .text-gray-400 { color: #64748b !important; }
+    html.light .text-gray-500 { color: #94a3b8 !important; }
+
+    html.light .border-gray-900 { border-color: #e2e8f0 !important; }
+    html.light .border-gray-800 { border-color: #e2e8f0 !important; }
+    html.light .border-gray-700 { border-color: #cbd5e1 !important; }
+    html.light .border-gray-600 { border-color: #e2e8f0 !important; }
+    html.light .divide-gray-700 > * { border-color: #e2e8f0 !important; }
+
+    html.light .bg-gray-950 { background-color: #f8fafc !important; }
+    html.light table thead tr { background-color: #f1f5f9 !important; }
+    html.light .hover\:bg-gray-750:hover { background-color: #f1f5f9 !important; }
+
+    /* Inputs in light mode */
+    html.light input[type="text"],
+    html.light input[type="number"],
+    html.light input[type="email"],
+    html.light input[type="password"],
+    html.light input[type="date"],
+    html.light select,
+    html.light textarea {
+      background-color: #ffffff !important;
+      color: #0f172a !important;
+      border-color: #cbd5e1 !important;
+    }
+    html.light input::placeholder,
+    html.light textarea::placeholder { color: #94a3b8 !important; }
+
+    /* Flash messages keep their colors */
   </style>
+  <script>
+    (function() {
+      var t = localStorage.getItem('tt-theme');
+      if (t === 'light') document.getElementById('html-root').classList.add('light');
+    })();
+  </script>
   {% block head %}{% endblock %}
 </head>
 <body x-data="{ sidebarOpen: window.innerWidth >= 1024 }" class="min-h-screen flex">
@@ -131,6 +185,21 @@
       {% block breadcrumb %}{% endblock %}
 
       <div class="ml-auto flex items-center gap-3">
+        <!-- Theme toggle -->
+        <button id="theme-toggle" onclick="toggleTheme()"
+                class="text-gray-400 hover:text-white transition-colors p-1 rounded-lg hover:bg-gray-700"
+                title="Alternar modo claro/escuro">
+          <!-- Sun icon (shown in dark mode) -->
+          <svg id="icon-sun" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M12 3v1m0 16v1m8.66-9h-1M4.34 12h-1m15.07-6.07-.71.71M5.64 18.36l-.71.71M18.36 18.36l-.71-.71M5.64 5.64l-.71-.71M12 8a4 4 0 100 8 4 4 0 000-8z"/>
+          </svg>
+          <!-- Moon icon (shown in light mode) -->
+          <svg id="icon-moon" class="w-5 h-5 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/>
+          </svg>
+        </button>
         {% if current_user.is_authenticated %}
         <span class="text-xs text-gray-400 hidden sm:block">{{ current_user.username }}</span>
         <a href="{{ url_for('auth.logout') }}" class="text-xs text-gray-400 hover:text-red-400 hidden sm:block">Sair</a>
@@ -194,5 +263,22 @@
   </div>
 
   {% block scripts %}{% endblock %}
+  <script>
+    function toggleTheme() {
+      var html = document.getElementById('html-root');
+      var isLight = html.classList.toggle('light');
+      localStorage.setItem('tt-theme', isLight ? 'light' : 'dark');
+      document.getElementById('icon-sun').classList.toggle('hidden', isLight);
+      document.getElementById('icon-moon').classList.toggle('hidden', !isLight);
+    }
+    // Sync icon on page load
+    (function() {
+      var isLight = document.getElementById('html-root').classList.contains('light');
+      if (isLight) {
+        document.getElementById('icon-sun').classList.add('hidden');
+        document.getElementById('icon-moon').classList.remove('hidden');
+      }
+    })();
+  </script>
 </body>
 </html>
