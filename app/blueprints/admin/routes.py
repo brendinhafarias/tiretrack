@@ -108,6 +108,10 @@ def user_new():
         flash('Username já existe.', 'error')
         return redirect(url_for('admin.index'))
 
+    if User.query.filter_by(email=email).first():
+        flash('E-mail já está em uso.', 'error')
+        return redirect(url_for('admin.index'))
+
     user = User(username=username, email=email, role=role, team_id=team_id)
     user.set_password(password)
     db.session.add(user)
