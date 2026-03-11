@@ -96,6 +96,67 @@ def detail(round_id):
                            event_count=event_count)
 
 
+@rounds_bp.route('/<int:round_id>/sessions/<int:session_id>/edit', methods=['POST'])
+@login_required
+@require_write
+def session_edit(round_id, session_id):
+    from app.models import Session as SessionModel
+    rnd = Round.query.filter_by(id=round_id, team_id=current_user.team_id).first_or_404()
+    session = SessionModel.query.filter_by(
+        id=session_id, round_id=round_id, team_id=current_user.team_id
+    ).first_or_404()
+    tire = session.tire
+
+    session.event_type = request.form.get('event_type', session.event_type)
+    session.position   = request.form.get('position', '').strip() or session.position
+    session.notes      = request.form.get('notes', '').strip() or None
+
+    date_raw = request.form.get('date', '').strip()
+    if date_raw:
+        session.date = date.fromisoformat(date_raw)
+
+    twi_int_raw = request.form.get('twi_int', '').strip()
+    twi_ci_raw  = request.form.get('twi_ci',  '').strip()
+    twi_co_raw  = request.form.get('twi_co',  '').strip()
+    twi_ext_raw = request.form.get('twi_ext', '').strip()
+    has_twi = all([twi_int_raw, twi_ci_raw, twi_co_raw, twi_ext_raw])
+
+    if has_twi:
+        twi_int = float(twi_int_raw)
+        twi_ci  = float(twi_ci_raw)
+        twi_co  = float(twi_co_raw)
+        twi_ext = float(twi_ext_raw)
+        twi_avg = round((twi_int + twi_ci + twi_co + twi_ext) / 4, 2)
+        pct_int = round((twi_int / tire.twi_initial_int) * 100, 1) if tire.twi_initial_int else 100
+        pct_ci  = round((twi_ci  / tire.twi_initial_ci)  * 100, 1) if tire.twi_initial_ci  else 100
+        pct_co  = round((twi_co  / tire.twi_initial_co)  * 100, 1) if tire.twi_initial_co  else 100
+        pct_ext = round((twi_ext / tire.twi_initial_ext) * 100, 1) if tire.twi_initial_ext else 100
+        pct_avg = round((pct_int + pct_ci + pct_co + pct_ext) / 4, 1)
+
+        session.twi_int     = twi_int
+        session.twi_ci      = twi_ci
+        session.twi_co      = twi_co
+        session.twi_ext     = twi_ext
+        session.twi_avg     = twi_avg
+        session.twi_pct_int = pct_int
+        session.twi_pct_ci  = pct_ci
+        session.twi_pct_co  = pct_co
+        session.twi_pct_ext = pct_ext
+        session.twi_pct_avg = pct_avg
+
+        # Update tire current TWI if this is the most recent session with TWI for this tire
+        latest_twi = SessionModel.query.filter(
+            SessionModel.tire_id == tire.id,
+            SessionModel.twi_avg.isnot(None)
+        ).order_by(SessionModel.date.desc(), SessionModel.id.desc()).first()
+        if latest_twi and latest_twi.id == session.id:
+            tire.update_current_twi(twi_int, twi_ci, twi_co, twi_ext)
+
+    db.session.commit()
+    flash('Sessão atualizada.', 'success')
+    return redirect(url_for('rounds.detail', round_id=round_id))
+
+
 @rounds_bp.route('/<int:round_id>/close', methods=['POST'])
 @login_required
 @require_write

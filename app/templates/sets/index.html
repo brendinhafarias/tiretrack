@@ -205,7 +205,7 @@
           <tr class="bg-gray-900 text-gray-400 text-xs uppercase border-b border-gray-700">
             <th class="px-4 py-3 text-left">Nome</th>
             <th class="px-4 py-3 text-left hidden sm:table-cell">Piloto</th>
-            <th class="px-4 py-3 text-left hidden md:table-cell">Montado</th>
+            <th class="px-4 py-3 text-left hidden md:table-cell">Criado em</th>
             <th class="px-4 py-3 text-left hidden md:table-cell">Desmontado</th>
             <th class="px-4 py-3 text-left">Pneus</th>
           </tr>
@@ -283,7 +283,7 @@
                     'bg-red-900 text-red-300': preview.status === 'blocked',
                     'bg-gray-700 text-gray-400': preview.status === 'trash'
                   }"
-                  x-text="{'available':'Disponível','mounted':'Montado','blocked':'Bloqueado','trash':'Descartado'}[preview.status] || preview.status">
+                  x-text="{'available':'Disponível','mounted':'Em Set','blocked':'Bloqueado','trash':'Descartado'}[preview.status] || preview.status">
             </span>
             <span class="text-xs px-2.5 py-1 rounded-full bg-gray-700 text-gray-300" x-text="preview.tire_type === 'wet' ? 'Chuva' : 'Slick'"></span>
             <span class="text-xs px-2.5 py-1 rounded-full bg-gray-700 text-gray-300" x-text="preview.compound"></span>

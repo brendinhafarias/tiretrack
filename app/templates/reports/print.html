@@ -127,7 +127,7 @@
       <td>{{ td.total_laps }}</td>
       <td>
         <span class="badge badge-{{ td.tire.status }}">
-          {{ {'available':'Disponível','mounted':'Montado','blocked':'Bloqueado','trash':'Descartado'}.get(td.tire.status, td.tire.status) }}
+          {{ {'available':'Disponível','mounted':'Em Set','blocked':'Bloqueado','trash':'Descartado'}.get(td.tire.status, td.tire.status) }}
         </span>
       </td>
     </tr>

@@ -3,6 +3,7 @@ from flask_login import login_required, current_user
 from app.blueprints.dashboard import dashboard_bp
 from app.models import Tire, TireSet, Driver, Session
 from app.extensions import db
+from sqlalchemy import func
 
 
 @dashboard_bp.route('/')
@@ -43,6 +44,17 @@ def index():
 
     tires = query.all()
 
+    # Tires whose last session has no TWI recorded
+    latest_sub = db.session.query(
+        func.max(Session.id).label('max_id')
+    ).filter(Session.team_id == team_id).group_by(Session.tire_id).subquery()
+
+    no_twi_tire_ids = set(
+        row.tire_id for row in db.session.query(Session.tire_id).join(
+            latest_sub, Session.id == latest_sub.c.max_id
+        ).filter(Session.twi_avg.is_(None)).all()
+    )
+
     # Build enriched data for each tire
     tire_data = []
     for tire in tires:
@@ -60,6 +72,7 @@ def index():
             'active_set': active_set,
             'position': position,
             'tracks': tracks,
+            'last_session_no_twi': tire.id in no_twi_tire_ids,
         })
 
     # Counts for summary cards
