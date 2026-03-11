@@ -118,6 +118,8 @@ def detail(round_id):
                 'round_id': round_id,
                 'date': first.date.isoformat(),
                 'event_type': first.event_type,
+                'laps': first.laps,
+                'km_session': first.km_session,
                 'is_set': True,
                 'label': first.tire_set.name if first.tire_set else '—',
                 'positions': positions_data,
@@ -141,6 +143,8 @@ def detail(round_id):
                 'round_id': round_id,
                 'date': s.date.isoformat(),
                 'event_type': s.event_type,
+                'laps': s.laps,
+                'km_session': s.km_session,
                 'is_set': False,
                 'label': s.tire.code,
                 'positions': [{
@@ -197,6 +201,8 @@ def session_group_edit(round_id):
 
     new_event_type = request.form.get('event_type', '').strip()
     date_raw = request.form.get('date', '').strip()
+    laps_raw = request.form.get('laps', '').strip()
+    km_raw = request.form.get('km_session', '').strip()
     notes_common = request.form.get('notes', '').strip() or None
 
     for s in sessions:
@@ -204,6 +210,10 @@ def session_group_edit(round_id):
             s.event_type = new_event_type
         if date_raw:
             s.date = date.fromisoformat(date_raw)
+        if laps_raw:
+            s.laps = int(laps_raw)
+        if km_raw:
+            s.km_session = round(float(km_raw), 2)
         s.notes = notes_common
 
         pos = s.position
