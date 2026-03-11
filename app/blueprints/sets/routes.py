@@ -2,7 +2,7 @@ from datetime import datetime
 from flask import render_template, redirect, url_for, flash, request
 from flask_login import login_required, current_user
 from app.blueprints.sets import sets_bp
-from app.models import TireSet, Tire, Driver
+from app.models import TireSet, Tire, Driver, PitStop, PitStopChange
 from app.extensions import db
 from app.utils import require_write
 
@@ -277,5 +277,163 @@ def session_new(set_id):
     return render_template('sets/session_new.html',
                            tire_set=tire_set,
                            positions_tires=positions_tires,
+                           tracks=tracks,
+                           rounds=rounds)
+
+
+@sets_bp.route('/<int:set_id>/pitstop/new', methods=['GET', 'POST'])
+@login_required
+@require_write
+def pitstop_new(set_id):
+    from app.models import Session, Round, Track
+    from app.utils import get_team_tracks
+    from datetime import date as date_cls
+
+    tire_set = TireSet.query.filter_by(id=set_id, team_id=current_user.team_id).first_or_404()
+    if tire_set.status != 'active':
+        flash('Só é possível registrar pit stop em sets ativos.', 'error')
+        return redirect(url_for('sets.index'))
+
+    team_id = current_user.team_id
+    tracks = get_team_tracks(team_id)
+    rounds = Round.query.filter_by(team_id=team_id, status='open').order_by(Round.name).all()
+    available_tires = Tire.query.filter_by(team_id=team_id).filter(
+        Tire.status == 'available'
+    ).order_by(Tire.code).all()
+
+    positions_tires = [
+        ('DE', tire_set.tire_de),
+        ('DD', tire_set.tire_dd),
+        ('TE', tire_set.tire_te),
+        ('TD', tire_set.tire_td),
+    ]
+
+    if request.method == 'POST':
+        track_id = int(request.form.get('track_id'))
+        round_id = request.form.get('round_id') or None
+        event_type = request.form.get('event_type', 'race')
+        pit_date = date_cls.fromisoformat(request.form.get('date', date_cls.today().isoformat()))
+        lap_stop = int(request.form.get('lap_stop', 0))
+        notes = request.form.get('notes', '').strip() or None
+
+        if lap_stop <= 0:
+            flash('Informe o número da volta do pit stop.', 'error')
+            return redirect(url_for('sets.pitstop_new', set_id=set_id))
+
+        track = Track.query.get(track_id)
+        km_per_lap = track.km_per_lap if track and track.km_per_lap else None
+        km_manual = request.form.get('km_manual')
+        km_stint = round(lap_stop * km_per_lap, 3) if km_per_lap else float(km_manual or 0)
+
+        pit_stop = PitStop(
+            team_id=team_id,
+            set_id=tire_set.id,
+            round_id=int(round_id) if round_id else None,
+            track_id=track_id,
+            event_type=event_type,
+            date=pit_date,
+            lap_stop=lap_stop,
+            notes=notes,
+        )
+        db.session.add(pit_stop)
+        db.session.flush()
+
+        changed = []
+        pos_field_map = {
+            'DE': ('tire_de_id', tire_set.tire_de),
+            'DD': ('tire_dd_id', tire_set.tire_dd),
+            'TE': ('tire_te_id', tire_set.tire_te),
+            'TD': ('tire_td_id', tire_set.tire_td),
+        }
+
+        for pos, (field, tire_out) in pos_field_map.items():
+            new_tire_id = request.form.get(f'{pos.lower()}_new_tire_id') or None
+            if not new_tire_id or not tire_out:
+                continue
+
+            tire_in = Tire.query.filter_by(id=int(new_tire_id), team_id=team_id).first()
+            if not tire_in:
+                continue
+
+            # TWI of outgoing tire at pit stop (optional)
+            twi_int_raw = request.form.get(f'{pos.lower()}_twi_int', '').strip()
+            twi_ci_raw  = request.form.get(f'{pos.lower()}_twi_ci',  '').strip()
+            twi_co_raw  = request.form.get(f'{pos.lower()}_twi_co',  '').strip()
+            twi_ext_raw = request.form.get(f'{pos.lower()}_twi_ext', '').strip()
+            has_twi = all([twi_int_raw, twi_ci_raw, twi_co_raw, twi_ext_raw])
+
+            if has_twi:
+                twi_int = float(twi_int_raw)
+                twi_ci  = float(twi_ci_raw)
+                twi_co  = float(twi_co_raw)
+                twi_ext = float(twi_ext_raw)
+                twi_avg = round((twi_int + twi_ci + twi_co + twi_ext) / 4, 2)
+                pct_int = round((twi_int / tire_out.twi_initial_int) * 100, 1) if tire_out.twi_initial_int else 100
+                pct_ci  = round((twi_ci  / tire_out.twi_initial_ci)  * 100, 1) if tire_out.twi_initial_ci  else 100
+                pct_co  = round((twi_co  / tire_out.twi_initial_co)  * 100, 1) if tire_out.twi_initial_co  else 100
+                pct_ext = round((twi_ext / tire_out.twi_initial_ext) * 100, 1) if tire_out.twi_initial_ext else 100
+                pct_avg = round((pct_int + pct_ci + pct_co + pct_ext) / 4, 1)
+            else:
+                twi_int = twi_ci = twi_co = twi_ext = twi_avg = None
+                pct_int = pct_ci = pct_co = pct_ext = pct_avg = None
+
+            km_cumulative = (tire_out.total_km or 0) + km_stint
+
+            # Session for the outgoing tire (stint before the pit stop)
+            stint_session = Session(
+                team_id=team_id,
+                tire_id=tire_out.id,
+                set_id=tire_set.id,
+                round_id=int(round_id) if round_id else None,
+                track_id=track_id,
+                driver_id=tire_set.driver_id,
+                event_type=event_type,
+                position=pos,
+                date=pit_date,
+                laps=lap_stop,
+                km_session=km_stint,
+                km_cumulative=km_cumulative,
+                twi_int=twi_int, twi_ci=twi_ci, twi_co=twi_co, twi_ext=twi_ext,
+                twi_avg=twi_avg,
+                twi_pct_int=pct_int, twi_pct_ci=pct_ci, twi_pct_co=pct_co, twi_pct_ext=pct_ext,
+                twi_pct_avg=pct_avg,
+                notes=f'Pit stop — volta {lap_stop}',
+            )
+            db.session.add(stint_session)
+
+            tire_out.total_km = km_cumulative
+            tire_out.total_laps = (tire_out.total_laps or 0) + lap_stop
+            if has_twi:
+                tire_out.update_current_twi(twi_int, twi_ci, twi_co, twi_ext)
+            tire_out.status = 'available'
+
+            # Update the set
+            setattr(tire_set, field, tire_in.id)
+            tire_in.status = 'mounted'
+
+            # PitStopChange record
+            change = PitStopChange(
+                pit_stop_id=pit_stop.id,
+                position=pos,
+                tire_out_id=tire_out.id,
+                tire_in_id=tire_in.id,
+                twi_int=twi_int, twi_ci=twi_ci, twi_co=twi_co, twi_ext=twi_ext,
+            )
+            db.session.add(change)
+            changed.append(f'{pos}: {tire_out.code} → {tire_in.code}')
+
+        if not changed:
+            db.session.rollback()
+            flash('Selecione ao menos uma posição para trocar.', 'error')
+            return redirect(url_for('sets.pitstop_new', set_id=set_id))
+
+        db.session.commit()
+        flash(f'Pit stop registrado! Volta {lap_stop} · {" | ".join(changed)}', 'success')
+        return redirect(url_for('sets.index'))
+
+    return render_template('sets/pitstop_new.html',
+                           tire_set=tire_set,
+                           positions_tires=positions_tires,
+                           available_tires=available_tires,
                            tracks=tracks,
                            rounds=rounds)

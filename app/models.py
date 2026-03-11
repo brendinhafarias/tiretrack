@@ -400,6 +400,46 @@ class Observation(db.Model):
         return f'<Observation tire={self.tire_id} action={self.action}>'
 
 
+class PitStop(db.Model):
+    __tablename__ = 'pit_stops'
+
+    id         = db.Column(db.Integer, primary_key=True)
+    team_id    = db.Column(db.Integer, db.ForeignKey('teams.id'), nullable=False)
+    set_id     = db.Column(db.Integer, db.ForeignKey('tire_sets.id'), nullable=False)
+    round_id   = db.Column(db.Integer, db.ForeignKey('rounds.id'), nullable=True)
+    track_id   = db.Column(db.Integer, db.ForeignKey('tracks.id'), nullable=True)
+    event_type = db.Column(db.String(20), default='race')
+    date       = db.Column(db.Date, nullable=False)
+    lap_stop   = db.Column(db.Integer, nullable=False)
+    notes      = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    changes = db.relationship('PitStopChange', backref='pit_stop', cascade='all, delete-orphan')
+
+    def __repr__(self):
+        return f'<PitStop set={self.set_id} lap={self.lap_stop}>'
+
+
+class PitStopChange(db.Model):
+    __tablename__ = 'pit_stop_changes'
+
+    id          = db.Column(db.Integer, primary_key=True)
+    pit_stop_id = db.Column(db.Integer, db.ForeignKey('pit_stops.id'), nullable=False)
+    position    = db.Column(db.String(2), nullable=False)
+    tire_out_id = db.Column(db.Integer, db.ForeignKey('tires.id'), nullable=False)
+    tire_in_id  = db.Column(db.Integer, db.ForeignKey('tires.id'), nullable=False)
+    twi_int     = db.Column(db.Float, nullable=True)
+    twi_ci      = db.Column(db.Float, nullable=True)
+    twi_co      = db.Column(db.Float, nullable=True)
+    twi_ext     = db.Column(db.Float, nullable=True)
+
+    tire_out = db.relationship('Tire', foreign_keys=[tire_out_id])
+    tire_in  = db.relationship('Tire', foreign_keys=[tire_in_id])
+
+    def __repr__(self):
+        return f'<PitStopChange pos={self.position} out={self.tire_out_id} in={self.tire_in_id}>'
+
+
 class TirePhoto(db.Model):
     __tablename__ = 'tire_photos'
 
