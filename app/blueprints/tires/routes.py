@@ -138,11 +138,13 @@ def session_new(tire_id):
         laps = int(request.form.get('laps'))
         km_manual = request.form.get('km_manual')
 
-        twi_int = float(request.form.get('twi_int'))
-        twi_ci = float(request.form.get('twi_ci'))
-        twi_co = float(request.form.get('twi_co'))
-        twi_ext = float(request.form.get('twi_ext'))
         notes = request.form.get('notes', '').strip() or None
+
+        twi_int_raw = request.form.get('twi_int', '').strip()
+        twi_ci_raw  = request.form.get('twi_ci',  '').strip()
+        twi_co_raw  = request.form.get('twi_co',  '').strip()
+        twi_ext_raw = request.form.get('twi_ext', '').strip()
+        has_twi = all([twi_int_raw, twi_ci_raw, twi_co_raw, twi_ext_raw])
 
         track = Track.query.get(track_id)
         if track and track.km_per_lap:
@@ -151,15 +153,22 @@ def session_new(tire_id):
             km_session = float(km_manual or 0)
 
         km_cumulative = tire.total_km + km_session
-        twi_avg = round((twi_int + twi_ci + twi_co + twi_ext) / 4, 2)
 
-        pct_int = round((twi_int / tire.twi_initial_int) * 100, 1) if tire.twi_initial_int else 100
-        pct_ci = round((twi_ci / tire.twi_initial_ci) * 100, 1) if tire.twi_initial_ci else 100
-        pct_co = round((twi_co / tire.twi_initial_co) * 100, 1) if tire.twi_initial_co else 100
-        pct_ext = round((twi_ext / tire.twi_initial_ext) * 100, 1) if tire.twi_initial_ext else 100
-        pct_avg = round((pct_int + pct_ci + pct_co + pct_ext) / 4, 1)
+        if has_twi:
+            twi_int = float(twi_int_raw)
+            twi_ci  = float(twi_ci_raw)
+            twi_co  = float(twi_co_raw)
+            twi_ext = float(twi_ext_raw)
+            twi_avg = round((twi_int + twi_ci + twi_co + twi_ext) / 4, 2)
+            pct_int = round((twi_int / tire.twi_initial_int) * 100, 1) if tire.twi_initial_int else 100
+            pct_ci  = round((twi_ci  / tire.twi_initial_ci)  * 100, 1) if tire.twi_initial_ci  else 100
+            pct_co  = round((twi_co  / tire.twi_initial_co)  * 100, 1) if tire.twi_initial_co  else 100
+            pct_ext = round((twi_ext / tire.twi_initial_ext) * 100, 1) if tire.twi_initial_ext else 100
+            pct_avg = round((pct_int + pct_ci + pct_co + pct_ext) / 4, 1)
+        else:
+            twi_int = twi_ci = twi_co = twi_ext = twi_avg = None
+            pct_int = pct_ci = pct_co = pct_ext = pct_avg = None
 
-        # Find active set for this tire
         active_set = tire.get_active_set()
 
         session = Session(
@@ -189,13 +198,16 @@ def session_new(tire_id):
         )
         db.session.add(session)
 
-        # Update tire current state
         tire.total_km = km_cumulative
         tire.total_laps = (tire.total_laps or 0) + laps
-        tire.update_current_twi(twi_int, twi_ci, twi_co, twi_ext)
+        if has_twi:
+            tire.update_current_twi(twi_int, twi_ci, twi_co, twi_ext)
 
         db.session.commit()
-        flash(f'Sessão registrada! TWI médio: {twi_avg:.1f}mm ({pct_avg:.0f}% restante)', 'success')
+        if has_twi:
+            flash(f'Sessão registrada! TWI médio: {twi_avg:.1f}mm ({pct_avg:.0f}% restante)', 'success')
+        else:
+            flash(f'Sessão registrada! {laps} voltas · {km_session:.1f} km (sem leitura TWI)', 'success')
         return redirect(url_for('tires.detail', tire_id=tire.id))
 
     return render_template('tires/session_new.html', tire=tire, tracks=tracks, rounds=rounds)

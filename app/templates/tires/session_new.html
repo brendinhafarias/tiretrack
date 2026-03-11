@@ -140,7 +140,7 @@
     <!-- TWI readings -->
     <div class="bg-gray-800 rounded-xl p-5 border border-gray-700 space-y-4">
       <div>
-        <h2 class="text-sm font-semibold text-gray-300 uppercase tracking-wide">Leituras TWI (mm)</h2>
+        <h2 class="text-sm font-semibold text-gray-300 uppercase tracking-wide">Leituras TWI (mm) <span class="text-gray-500 font-normal normal-case">— opcional</span></h2>
         <p class="text-xs text-gray-500 mt-1">Referência inicial: INT={{ '%.1f'|format(tire.twi_initial_int) }} | C-I={{ '%.1f'|format(tire.twi_initial_ci) }} | C-E={{ '%.1f'|format(tire.twi_initial_co) }} | EXT={{ '%.1f'|format(tire.twi_initial_ext) }}</p>
       </div>
 
@@ -160,7 +160,7 @@
           ('twi_ext', 'EXT', tire.twi_initial_ext, tire.current_twi_ext)
         ] %}
         <div class="space-y-1">
-          <input type="number" name="{{ fname }}" required min="0" :max="twiMax" step="0.1" inputmode="decimal"
+          <input type="number" name="{{ fname }}" min="0" :max="twiMax" step="0.1" inputmode="decimal"
                  value="{{ '%.1f'|format(curr_val) if curr_val else '' }}"
                  class="w-full px-2 py-3 bg-gray-900 border border-gray-600 rounded-xl text-white text-center
                         focus:outline-none focus:border-red-500 font-mono text-lg font-bold min-h-[56px]"
