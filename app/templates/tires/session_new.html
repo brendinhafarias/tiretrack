@@ -160,12 +160,12 @@
           ('twi_ext', 'EXT', tire.twi_initial_ext, tire.current_twi_ext)
         ] %}
         <div class="space-y-1">
-          <input type="number" name="{{ fname }}" min="0" :max="twiMax" step="0.1" inputmode="decimal"
-                 value="{{ '%.1f'|format(curr_val) if curr_val else '' }}"
+          <input type="number" name="{{ fname }}" min="0" :max="twiMax" step="0.001" inputmode="decimal"
+                 value="{{ '%.3f'|format(curr_val) if curr_val else '' }}"
                  class="w-full px-2 py-3 bg-gray-900 border border-gray-600 rounded-xl text-white text-center
                         focus:outline-none focus:border-red-500 font-mono text-lg font-bold min-h-[56px]"
-                 placeholder="{{ '%.1f'|format(init_val) }}">
-          <div class="text-xs text-gray-600 text-center">ref: {{ '%.1f'|format(init_val) }}</div>
+                 placeholder="{{ '%.3f'|format(init_val) }}">
+          <div class="text-xs text-gray-600 text-center">ref: {{ '%.3f'|format(init_val) }}</div>
         </div>
         {% endfor %}
       </div>
