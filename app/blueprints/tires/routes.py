@@ -1,3 +1,4 @@
+import json
 from datetime import datetime, date
 from flask import render_template, redirect, url_for, flash, request, abort
 from flask_login import login_required, current_user
@@ -108,9 +109,27 @@ def detail(tire_id):
     ).group_by(TrackModel.name).all()
     km_by_track = [[name, round(float(km), 1)] for name, km in km_by_track_raw]
 
+    session_edit_data = {
+        s.id: json.dumps({
+            'id': s.id,
+            'date': s.date.isoformat(),
+            'event_type': s.event_type,
+            'laps': s.laps,
+            'km_session': s.km_session,
+            'twi_int': s.twi_int,
+            'twi_ci': s.twi_ci,
+            'twi_co': s.twi_co,
+            'twi_ext': s.twi_ext,
+            'twi_pct_avg': s.twi_pct_avg,
+            'notes': s.notes or '',
+        })
+        for s in sessions
+    }
+
     return render_template('tires/detail.html',
                            tire=tire,
                            sessions=sessions,
+                           session_edit_data=session_edit_data,
                            observations=observations,
                            active_set=active_set,
                            position=position,

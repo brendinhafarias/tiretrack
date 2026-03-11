@@ -205,19 +205,6 @@
           </thead>
           <tbody class="divide-y divide-gray-700">
             {% for s in sessions %}
-            {% set s_data = {
-              'id': s.id,
-              'date': s.date.isoformat(),
-              'event_type': s.event_type,
-              'laps': s.laps,
-              'km_session': s.km_session,
-              'twi_int': s.twi_int,
-              'twi_ci': s.twi_ci,
-              'twi_co': s.twi_co,
-              'twi_ext': s.twi_ext,
-              'twi_pct_avg': s.twi_pct_avg,
-              'notes': s.notes or ''
-            } %}
             <tr class="hover:bg-gray-750 transition-colors">
               <td class="px-4 py-3 text-gray-300 whitespace-nowrap">{{ s.date.strftime('%d/%m/%Y') }}</td>
               <td class="px-4 py-3 text-gray-200 max-w-[150px] truncate">{{ s.track.name if s.track else '—' }}</td>
@@ -247,7 +234,7 @@
               {% if current_user.can_write %}
               <td class="px-3 py-3 text-center">
                 <button type="button"
-                        @click='editSession = {{ s_data | tojson }}; editSessionModal = true'
+                        @click='editSession = {{ session_edit_data[s.id] | safe }}; editSessionModal = true'
                         class="text-xs bg-gray-700 hover:bg-blue-800 text-gray-300 hover:text-white px-2 py-1 rounded-lg transition-colors whitespace-nowrap">
                   Editar
                 </button>
