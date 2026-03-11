@@ -102,6 +102,13 @@
           <div class="text-xs text-gray-400 mb-1">Última sessão</div>
           {% set last = sessions[0] %}
           <div class="text-sm text-gray-200">{{ last.date.strftime('%d/%m/%Y') }} · {{ last.track.name if last.track else '—' }} · {{ last.event_type_label }}</div>
+          {% if last.twi_avg is none %}
+          <div class="mt-2 flex items-center gap-2 bg-amber-900/40 border border-amber-700 rounded-lg px-3 py-2">
+            <span class="text-amber-300 text-sm">⚠</span>
+            <span class="text-xs text-amber-200">Última saída sem leitura de TWI.</span>
+            <button @click="tab = 'sessions'" class="ml-auto text-xs text-amber-400 hover:text-amber-200 underline">Editar</button>
+          </div>
+          {% endif %}
         </div>
         {% endif %}
 
