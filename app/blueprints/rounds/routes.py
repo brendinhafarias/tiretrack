@@ -1,3 +1,5 @@
+import json
+from collections import defaultdict
 from datetime import date
 from flask import render_template, redirect, url_for, flash, request
 from flask_login import login_required, current_user
@@ -5,6 +7,8 @@ from app.blueprints.rounds import rounds_bp
 from app.models import Round, Session, Tire, Driver
 from app.extensions import db
 from app.utils import get_team_tracks, require_write
+
+_POS_ORDER = {'DE': 0, 'DD': 1, 'TE': 2, 'TD': 3}
 
 
 @rounds_bp.route('/')
@@ -59,14 +63,13 @@ def detail(round_id):
     rnd = Round.query.filter_by(id=round_id, team_id=current_user.team_id).first_or_404()
     sessions = Session.query.filter_by(round_id=round_id).order_by(Session.date, Session.created_at).all()
 
-    # Group sessions by tire
+    # Group sessions by tire (for "Estado dos Pneus" table)
     tire_sessions = {}
     for s in sessions:
         if s.tire_id not in tire_sessions:
             tire_sessions[s.tire_id] = {'tire': s.tire, 'sessions': []}
         tire_sessions[s.tire_id]['sessions'].append(s)
 
-    # Compute aggregates per tire in round
     for tid, data in tire_sessions.items():
         sorted_s = sorted(data['sessions'], key=lambda x: (x.date, x.created_at))
         data['first_session'] = sorted_s[0]
@@ -74,83 +77,167 @@ def detail(round_id):
         data['total_km'] = round(sum(s.km_session for s in data['sessions']), 1)
         data['total_laps'] = sum(s.laps for s in data['sessions'])
 
-    # Deduplicate events for summary: set sessions grouped by (set_id, date, event_type); solo by tire
-    seen_event_keys = set()
-    event_km = 0.0
-    event_laps = 0
-    event_count = 0
+    # Build event groups: set sessions grouped by (set_id, date, event_type), solo per session
+    set_groups = defaultdict(list)
+    solo_list = []
     for s in sessions:
-        key = ('set', s.set_id, s.date, s.event_type) if s.set_id else ('tire', s.tire_id, s.date, s.event_type)
-        if key not in seen_event_keys:
-            seen_event_keys.add(key)
-            event_km += s.km_session
-            event_laps += s.laps
-            event_count += 1
+        if s.set_id:
+            set_groups[(s.set_id, s.date.isoformat(), s.event_type)].append(s)
+        else:
+            solo_list.append(s)
+
+    event_groups = []
+    for (set_id, date_iso, etype), grp in set_groups.items():
+        grp_sorted = sorted(grp, key=lambda x: _POS_ORDER.get(x.position, 99))
+        first = grp_sorted[0]
+        positions_data = [
+            {
+                'pos': s.position or '',
+                'tire_code': s.tire.code,
+                'twi_int': s.twi_int,
+                'twi_ci': s.twi_ci,
+                'twi_co': s.twi_co,
+                'twi_ext': s.twi_ext,
+                'twi_pct_avg': s.twi_pct_avg,
+            }
+            for s in grp_sorted
+        ]
+        event_groups.append({
+            'is_set': True,
+            'tire_set': first.tire_set,
+            'date': first.date,
+            'event_type': first.event_type,
+            'event_type_label': first.event_type_label,
+            'track': first.track,
+            'laps': first.laps,
+            'km_session': first.km_session,
+            'sessions': grp_sorted,
+            'session_ids': ','.join(str(s.id) for s in grp_sorted),
+            'edit_data': json.dumps({
+                'session_ids': ','.join(str(s.id) for s in grp_sorted),
+                'round_id': round_id,
+                'date': first.date.isoformat(),
+                'event_type': first.event_type,
+                'is_set': True,
+                'label': first.tire_set.name if first.tire_set else '—',
+                'positions': positions_data,
+            }),
+        })
+
+    for s in solo_list:
+        event_groups.append({
+            'is_set': False,
+            'tire_set': None,
+            'date': s.date,
+            'event_type': s.event_type,
+            'event_type_label': s.event_type_label,
+            'track': s.track,
+            'laps': s.laps,
+            'km_session': s.km_session,
+            'sessions': [s],
+            'session_ids': str(s.id),
+            'edit_data': json.dumps({
+                'session_ids': str(s.id),
+                'round_id': round_id,
+                'date': s.date.isoformat(),
+                'event_type': s.event_type,
+                'is_set': False,
+                'label': s.tire.code,
+                'positions': [{
+                    'pos': s.position or '',
+                    'tire_code': s.tire.code,
+                    'twi_int': s.twi_int,
+                    'twi_ci': s.twi_ci,
+                    'twi_co': s.twi_co,
+                    'twi_ext': s.twi_ext,
+                    'twi_pct_avg': s.twi_pct_avg,
+                }],
+            }),
+        })
+
+    event_groups.sort(key=lambda x: (x['date'], x['sessions'][0].id))
+
+    # Summary counts (deduplicated by event group)
+    event_km = round(sum(eg['km_session'] for eg in event_groups), 1)
+    event_laps = sum(eg['laps'] for eg in event_groups)
+    event_count = len(event_groups)
 
     return render_template('rounds/detail.html',
                            rnd=rnd,
-                           sessions=sessions,
                            tire_sessions=list(tire_sessions.values()),
-                           event_km=round(event_km, 1),
+                           event_groups=event_groups,
+                           event_km=event_km,
                            event_laps=event_laps,
                            event_count=event_count)
 
 
-@rounds_bp.route('/<int:round_id>/sessions/<int:session_id>/edit', methods=['POST'])
+@rounds_bp.route('/<int:round_id>/sessions/group-edit', methods=['POST'])
 @login_required
 @require_write
-def session_edit(round_id, session_id):
+def session_group_edit(round_id):
     from app.models import Session as SessionModel
-    rnd = Round.query.filter_by(id=round_id, team_id=current_user.team_id).first_or_404()
-    session = SessionModel.query.filter_by(
-        id=session_id, round_id=round_id, team_id=current_user.team_id
-    ).first_or_404()
-    tire = session.tire
+    Round.query.filter_by(id=round_id, team_id=current_user.team_id).first_or_404()
 
-    session.event_type = request.form.get('event_type', session.event_type)
-    session.position   = request.form.get('position', '').strip() or session.position
-    session.notes      = request.form.get('notes', '').strip() or None
+    session_ids_raw = request.form.get('session_ids', '')
+    try:
+        session_ids = [int(x) for x in session_ids_raw.split(',') if x.strip()]
+    except ValueError:
+        flash('Dados inválidos.', 'error')
+        return redirect(url_for('rounds.detail', round_id=round_id))
 
+    sessions = SessionModel.query.filter(
+        SessionModel.id.in_(session_ids),
+        SessionModel.round_id == round_id,
+        SessionModel.team_id == current_user.team_id
+    ).all()
+
+    if not sessions:
+        flash('Sessões não encontradas.', 'error')
+        return redirect(url_for('rounds.detail', round_id=round_id))
+
+    new_event_type = request.form.get('event_type', '').strip()
     date_raw = request.form.get('date', '').strip()
-    if date_raw:
-        session.date = date.fromisoformat(date_raw)
+    notes_common = request.form.get('notes', '').strip() or None
 
-    twi_int_raw = request.form.get('twi_int', '').strip()
-    twi_ci_raw  = request.form.get('twi_ci',  '').strip()
-    twi_co_raw  = request.form.get('twi_co',  '').strip()
-    twi_ext_raw = request.form.get('twi_ext', '').strip()
-    has_twi = all([twi_int_raw, twi_ci_raw, twi_co_raw, twi_ext_raw])
+    for s in sessions:
+        if new_event_type:
+            s.event_type = new_event_type
+        if date_raw:
+            s.date = date.fromisoformat(date_raw)
+        s.notes = notes_common
 
-    if has_twi:
-        twi_int = float(twi_int_raw)
-        twi_ci  = float(twi_ci_raw)
-        twi_co  = float(twi_co_raw)
-        twi_ext = float(twi_ext_raw)
-        twi_avg = round((twi_int + twi_ci + twi_co + twi_ext) / 4, 2)
-        pct_int = round((twi_int / tire.twi_initial_int) * 100, 1) if tire.twi_initial_int else 100
-        pct_ci  = round((twi_ci  / tire.twi_initial_ci)  * 100, 1) if tire.twi_initial_ci  else 100
-        pct_co  = round((twi_co  / tire.twi_initial_co)  * 100, 1) if tire.twi_initial_co  else 100
-        pct_ext = round((twi_ext / tire.twi_initial_ext) * 100, 1) if tire.twi_initial_ext else 100
-        pct_avg = round((pct_int + pct_ci + pct_co + pct_ext) / 4, 1)
+        pos = s.position
+        if pos:
+            twi_int_raw = request.form.get(f'{pos.lower()}_twi_int', '').strip()
+            twi_ci_raw  = request.form.get(f'{pos.lower()}_twi_ci',  '').strip()
+            twi_co_raw  = request.form.get(f'{pos.lower()}_twi_co',  '').strip()
+            twi_ext_raw = request.form.get(f'{pos.lower()}_twi_ext', '').strip()
+            has_twi = all([twi_int_raw, twi_ci_raw, twi_co_raw, twi_ext_raw])
 
-        session.twi_int     = twi_int
-        session.twi_ci      = twi_ci
-        session.twi_co      = twi_co
-        session.twi_ext     = twi_ext
-        session.twi_avg     = twi_avg
-        session.twi_pct_int = pct_int
-        session.twi_pct_ci  = pct_ci
-        session.twi_pct_co  = pct_co
-        session.twi_pct_ext = pct_ext
-        session.twi_pct_avg = pct_avg
+            if has_twi:
+                tire = s.tire
+                twi_int = float(twi_int_raw)
+                twi_ci  = float(twi_ci_raw)
+                twi_co  = float(twi_co_raw)
+                twi_ext = float(twi_ext_raw)
+                twi_avg = round((twi_int + twi_ci + twi_co + twi_ext) / 4, 2)
+                pct_int = round((twi_int / tire.twi_initial_int) * 100, 1) if tire.twi_initial_int else 100
+                pct_ci  = round((twi_ci  / tire.twi_initial_ci)  * 100, 1) if tire.twi_initial_ci  else 100
+                pct_co  = round((twi_co  / tire.twi_initial_co)  * 100, 1) if tire.twi_initial_co  else 100
+                pct_ext = round((twi_ext / tire.twi_initial_ext) * 100, 1) if tire.twi_initial_ext else 100
+                pct_avg = round((pct_int + pct_ci + pct_co + pct_ext) / 4, 1)
 
-        # Update tire current TWI if this is the most recent session with TWI for this tire
-        latest_twi = SessionModel.query.filter(
-            SessionModel.tire_id == tire.id,
-            SessionModel.twi_avg.isnot(None)
-        ).order_by(SessionModel.date.desc(), SessionModel.id.desc()).first()
-        if latest_twi and latest_twi.id == session.id:
-            tire.update_current_twi(twi_int, twi_ci, twi_co, twi_ext)
+                s.twi_int = twi_int; s.twi_ci = twi_ci; s.twi_co = twi_co; s.twi_ext = twi_ext
+                s.twi_avg = twi_avg
+                s.twi_pct_int = pct_int; s.twi_pct_ci = pct_ci; s.twi_pct_co = pct_co; s.twi_pct_ext = pct_ext
+                s.twi_pct_avg = pct_avg
+
+                latest_twi = SessionModel.query.filter(
+                    SessionModel.tire_id == tire.id,
+                    SessionModel.twi_avg.isnot(None)
+                ).order_by(SessionModel.date.desc(), SessionModel.id.desc()).first()
+                if latest_twi and latest_twi.id == s.id:
+                    tire.update_current_twi(twi_int, twi_ci, twi_co, twi_ext)
 
     db.session.commit()
     flash('Sessão atualizada.', 'success')

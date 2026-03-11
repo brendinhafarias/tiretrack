@@ -9,7 +9,7 @@
 {% endblock %}
 
 {% block content %}
-<div class="space-y-5" x-data="{ closeModal: false, editModal: false, editSession: {} }">
+<div class="space-y-5" x-data="{ closeModal: false, editModal: false, editGroup: {} }">
 
   <!-- Header -->
   <div class="bg-gray-800 rounded-xl p-5 border border-gray-700 flex flex-wrap items-start justify-between gap-4">
@@ -125,8 +125,8 @@
     </div>
   </div>
 
-  <!-- Sessions list -->
-  {% if sessions %}
+  <!-- Sessions list (grouped by event) -->
+  {% if event_groups %}
   <div class="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden">
     <div class="px-5 py-3 border-b border-gray-700">
       <h2 class="font-semibold text-gray-200">Todas as Sessões</h2>
@@ -136,52 +136,53 @@
         <thead>
           <tr class="bg-gray-900 text-gray-400 text-xs uppercase border-b border-gray-700">
             <th class="px-4 py-3 text-left">Data</th>
-            <th class="px-4 py-3 text-left">Pneu</th>
+            <th class="px-4 py-3 text-left">Set / Pneu</th>
             <th class="px-4 py-3 text-left">Pista</th>
             <th class="px-4 py-3 text-left">Tipo</th>
-            <th class="px-4 py-3 text-center">Pos.</th>
             <th class="px-4 py-3 text-right">Voltas</th>
             <th class="px-4 py-3 text-right">Km</th>
-            <th class="px-4 py-3 text-right">TWI%</th>
+            <th class="px-4 py-3 text-left">TWI por posição</th>
             {% if current_user.can_write %}<th class="px-4 py-3"></th>{% endif %}
           </tr>
         </thead>
         <tbody class="divide-y divide-gray-700">
-          {% for s in sessions %}
-          <tr class="hover:bg-gray-750">
-            <td class="px-4 py-3 text-gray-300 text-xs">{{ s.date.strftime('%d/%m/%Y') }}</td>
-            <td class="px-4 py-3"><a href="{{ url_for('tires.detail', tire_id=s.tire_id) }}" class="font-mono text-white hover:text-red-400">{{ s.tire.code }}</a></td>
-            <td class="px-4 py-3 text-gray-400">{{ s.track.name if s.track else '—' }}</td>
-            <td class="px-4 py-3 text-gray-400">{{ s.event_type_label }}</td>
-            <td class="px-4 py-3 text-center font-mono text-gray-300">{{ s.position or '—' }}</td>
-            <td class="px-4 py-3 text-right font-mono text-gray-300">{{ s.laps }}</td>
-            <td class="px-4 py-3 text-right font-mono text-gray-300">{{ '%.1f'|format(s.km_session) }}</td>
-            <td class="px-4 py-3 text-right">
-              {% if s.twi_pct_avg is not none %}
-              <span class="text-xs font-bold {{ 'text-green-400' if s.twi_pct_avg >= 70 else 'text-yellow-400' if s.twi_pct_avg >= 40 else 'text-orange-400' if s.twi_pct_avg >= 20 else 'text-red-400' }}">
-                {{ '%.0f'|format(s.twi_pct_avg) }}%
-              </span>
+          {% for eg in event_groups %}
+          <tr class="hover:bg-gray-750 align-top">
+            <td class="px-4 py-3 text-gray-300 text-xs whitespace-nowrap">{{ eg.date.strftime('%d/%m/%Y') }}</td>
+            <td class="px-4 py-3">
+              {% if eg.is_set and eg.tire_set %}
+              <div class="font-semibold text-white text-xs">{{ eg.tire_set.name }}</div>
+              <div class="text-xs text-gray-500">{{ eg.sessions|length }} pneus</div>
               {% else %}
-              <span class="text-xs text-amber-400 font-semibold" title="TWI não registrado">⚠ —</span>
+              {% set s0 = eg.sessions[0] %}
+              <a href="{{ url_for('tires.detail', tire_id=s0.tire_id) }}" class="font-mono text-white hover:text-red-400 text-xs">{{ s0.tire.code }}</a>
               {% endif %}
+            </td>
+            <td class="px-4 py-3 text-gray-400 text-xs whitespace-nowrap">{{ eg.track.name if eg.track else '—' }}</td>
+            <td class="px-4 py-3 text-gray-400 text-xs whitespace-nowrap">{{ eg.event_type_label }}</td>
+            <td class="px-4 py-3 text-right font-mono text-gray-300 text-xs">{{ eg.laps }}</td>
+            <td class="px-4 py-3 text-right font-mono text-gray-300 text-xs">{{ '%.1f'|format(eg.km_session) }}</td>
+            <td class="px-4 py-3">
+              <div class="flex flex-wrap gap-1.5">
+                {% for s in eg.sessions %}
+                <div class="text-center">
+                  <div class="text-xs text-gray-500">{{ s.position or s.tire.code }}</div>
+                  {% if s.twi_pct_avg is not none %}
+                  <span class="text-xs font-bold {{ 'text-green-400' if s.twi_pct_avg >= 70 else 'text-yellow-400' if s.twi_pct_avg >= 40 else 'text-orange-400' if s.twi_pct_avg >= 20 else 'text-red-400' }}">
+                    {{ '%.0f'|format(s.twi_pct_avg) }}%
+                  </span>
+                  {% else %}
+                  <span class="text-xs text-amber-400" title="Sem TWI">⚠</span>
+                  {% endif %}
+                </div>
+                {% endfor %}
+              </div>
             </td>
             {% if current_user.can_write %}
             <td class="px-4 py-3 text-center">
               <button type="button"
-                      @click="editSession = {
-                        id: {{ s.id }},
-                        round_id: {{ rnd.id }},
-                        date: '{{ s.date.isoformat() }}',
-                        event_type: '{{ s.event_type }}',
-                        position: '{{ s.position or '' }}',
-                        notes: {{ s.notes | tojson }},
-                        twi_int: {{ s.twi_int | tojson }},
-                        twi_ci:  {{ s.twi_ci  | tojson }},
-                        twi_co:  {{ s.twi_co  | tojson }},
-                        twi_ext: {{ s.twi_ext | tojson }},
-                        tire_code: '{{ s.tire.code }}'
-                      }; editModal = true"
-                      class="text-xs bg-gray-700 hover:bg-blue-800 text-gray-300 hover:text-white px-2 py-1 rounded-lg transition-colors">
+                      @click="editGroup = {{ eg.edit_data | safe }}; editModal = true"
+                      class="text-xs bg-gray-700 hover:bg-blue-800 text-gray-300 hover:text-white px-2 py-1 rounded-lg transition-colors whitespace-nowrap">
                 Editar
               </button>
             </td>
@@ -194,86 +195,99 @@
   </div>
   {% endif %}
 
-  <!-- ===== Edit Session Modal ===== -->
+  <!-- ===== Edit Session Group Modal ===== -->
   {% if current_user.can_write %}
   <div x-show="editModal" x-cloak
        class="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4"
        @click.self="editModal = false"
        @keydown.escape.window="editModal = false">
-    <div class="bg-gray-800 rounded-2xl w-full max-w-lg border border-gray-700 max-h-[90vh] overflow-y-auto">
+    <div class="bg-gray-800 rounded-2xl w-full max-w-xl border border-gray-700 max-h-[90vh] overflow-y-auto">
       <div class="flex items-center justify-between px-6 pt-6 pb-4 border-b border-gray-700">
-        <h3 class="text-xl font-bold text-white">Editar Sessão — <span x-text="editSession.tire_code" class="font-mono text-red-400"></span></h3>
+        <h3 class="text-xl font-bold text-white">Editar Sessão — <span x-text="editGroup.label" class="font-mono text-red-400"></span></h3>
         <button @click="editModal = false" class="text-gray-400 hover:text-white text-2xl leading-none">✕</button>
       </div>
 
-      <form method="POST" :action="'/rounds/' + editSession.round_id + '/sessions/' + editSession.id + '/edit'" class="p-6 space-y-4">
+      <form method="POST" action="{{ url_for('rounds.session_group_edit', round_id=rnd.id) }}" class="p-6 space-y-4">
+        <input type="hidden" name="session_ids" :value="editGroup.session_ids">
+
         <div class="grid grid-cols-2 gap-3">
           <div>
             <label class="block text-xs text-gray-400 mb-1">Data</label>
-            <input type="date" name="date" :value="editSession.date"
+            <input type="date" name="date" :value="editGroup.date"
                    class="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-xl text-white focus:outline-none focus:border-blue-500 text-sm">
           </div>
           <div>
             <label class="block text-xs text-gray-400 mb-1">Tipo de Evento</label>
             <select name="event_type"
-                    x-effect="$el.value = editSession.event_type"
+                    x-effect="$el.value = editGroup.event_type"
                     class="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-xl text-white focus:outline-none focus:border-blue-500 text-sm">
-              <option value="practice">Treino Livre</option>
-              <option value="qualifying">Classificação</option>
-              <option value="race">Corrida</option>
+              <optgroup label="Treinos">
+                <option value="fp1">Treino Livre 1</option>
+                <option value="fp2">Treino Livre 2</option>
+                <option value="extra">Treino Extra</option>
+              </optgroup>
+              <optgroup label="Classificação">
+                <option value="q1">Q1</option>
+                <option value="q2">Q2</option>
+                <option value="q3">Q3</option>
+              </optgroup>
+              <optgroup label="Corridas">
+                <option value="warmup">Warm-up</option>
+                <option value="sprint">Sprint</option>
+                <option value="race">Corrida Principal</option>
+              </optgroup>
               <option value="test">Teste</option>
             </select>
           </div>
         </div>
 
+        <!-- Per-position TWI fields -->
         <div>
-          <label class="block text-xs text-gray-400 mb-1">Posição no Carro</label>
-          <select name="position"
-                  x-effect="$el.value = editSession.position || ''"
-                  class="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-xl text-white focus:outline-none focus:border-blue-500 text-sm">
-            <option value="">—</option>
-            <option value="DE">DE – Dianteiro Esquerdo</option>
-            <option value="DD">DD – Dianteiro Direito</option>
-            <option value="TE">TE – Traseiro Esquerdo</option>
-            <option value="TD">TD – Traseiro Direito</option>
-          </select>
-        </div>
-
-        <div>
-          <label class="block text-xs text-gray-400 mb-1">Leituras TWI (mm) — opcional</label>
-          <div class="grid grid-cols-4 gap-2">
-            <div>
-              <div class="text-xs text-gray-500 mb-1 text-center">INT</div>
-              <input type="number" name="twi_int" step="0.1" min="0" :value="editSession.twi_int ?? ''"
-                     placeholder="—"
-                     class="w-full px-2 py-2 bg-gray-900 border border-gray-600 rounded-xl text-white text-center text-sm focus:outline-none focus:border-blue-500">
+          <label class="block text-xs text-gray-400 mb-2">Leituras TWI por posição (mm) — opcional</label>
+          <template x-for="p in editGroup.positions" :key="p.pos">
+            <div class="mb-3 bg-gray-900 rounded-xl p-3 border border-gray-700">
+              <div class="flex items-center gap-2 mb-2">
+                <span class="text-sm font-bold text-white font-mono bg-gray-700 px-2 py-0.5 rounded" x-text="p.pos || p.tire_code"></span>
+                <span class="text-xs text-gray-400 font-mono" x-text="p.tire_code"></span>
+                <span x-show="p.twi_pct_avg !== null" class="text-xs ml-auto"
+                      :class="p.twi_pct_avg >= 70 ? 'text-green-400' : p.twi_pct_avg >= 40 ? 'text-yellow-400' : p.twi_pct_avg >= 20 ? 'text-orange-400' : 'text-red-400'"
+                      x-text="p.twi_pct_avg !== null ? Math.round(p.twi_pct_avg) + '%' : ''"></span>
+                <span x-show="p.twi_pct_avg === null" class="text-xs text-amber-400 ml-auto">⚠ Sem TWI</span>
+              </div>
+              <div class="grid grid-cols-4 gap-1.5">
+                <div>
+                  <div class="text-xs text-gray-500 mb-1 text-center">INT</div>
+                  <input type="number" :name="(p.pos || 'xx').toLowerCase() + '_twi_int'" step="0.1" min="0"
+                         :value="p.twi_int ?? ''" placeholder="—"
+                         class="w-full px-1 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white text-center text-sm focus:outline-none focus:border-blue-500 font-mono">
+                </div>
+                <div>
+                  <div class="text-xs text-gray-500 mb-1 text-center">C-INT</div>
+                  <input type="number" :name="(p.pos || 'xx').toLowerCase() + '_twi_ci'" step="0.1" min="0"
+                         :value="p.twi_ci ?? ''" placeholder="—"
+                         class="w-full px-1 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white text-center text-sm focus:outline-none focus:border-blue-500 font-mono">
+                </div>
+                <div>
+                  <div class="text-xs text-gray-500 mb-1 text-center">C-EXT</div>
+                  <input type="number" :name="(p.pos || 'xx').toLowerCase() + '_twi_co'" step="0.1" min="0"
+                         :value="p.twi_co ?? ''" placeholder="—"
+                         class="w-full px-1 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white text-center text-sm focus:outline-none focus:border-blue-500 font-mono">
+                </div>
+                <div>
+                  <div class="text-xs text-gray-500 mb-1 text-center">EXT</div>
+                  <input type="number" :name="(p.pos || 'xx').toLowerCase() + '_twi_ext'" step="0.1" min="0"
+                         :value="p.twi_ext ?? ''" placeholder="—"
+                         class="w-full px-1 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white text-center text-sm focus:outline-none focus:border-blue-500 font-mono">
+                </div>
+              </div>
             </div>
-            <div>
-              <div class="text-xs text-gray-500 mb-1 text-center">C-INT</div>
-              <input type="number" name="twi_ci" step="0.1" min="0" :value="editSession.twi_ci ?? ''"
-                     placeholder="—"
-                     class="w-full px-2 py-2 bg-gray-900 border border-gray-600 rounded-xl text-white text-center text-sm focus:outline-none focus:border-blue-500">
-            </div>
-            <div>
-              <div class="text-xs text-gray-500 mb-1 text-center">C-EXT</div>
-              <input type="number" name="twi_co" step="0.1" min="0" :value="editSession.twi_co ?? ''"
-                     placeholder="—"
-                     class="w-full px-2 py-2 bg-gray-900 border border-gray-600 rounded-xl text-white text-center text-sm focus:outline-none focus:border-blue-500">
-            </div>
-            <div>
-              <div class="text-xs text-gray-500 mb-1 text-center">EXT</div>
-              <input type="number" name="twi_ext" step="0.1" min="0" :value="editSession.twi_ext ?? ''"
-                     placeholder="—"
-                     class="w-full px-2 py-2 bg-gray-900 border border-gray-600 rounded-xl text-white text-center text-sm focus:outline-none focus:border-blue-500">
-            </div>
-          </div>
-          <p class="text-xs text-gray-500 mt-1">Preencha os 4 pontos para atualizar o TWI. Deixe em branco para manter.</p>
+          </template>
+          <p class="text-xs text-gray-500">Preencha os 4 pontos de uma posição para atualizar o TWI daquele pneu.</p>
         </div>
 
         <div>
           <label class="block text-xs text-gray-400 mb-1">Observações</label>
-          <textarea name="notes" rows="2" :value="editSession.notes ?? ''"
-                    placeholder="Opcional…"
+          <textarea name="notes" rows="2" placeholder="Opcional…"
                     class="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-xl text-white text-sm focus:outline-none focus:border-blue-500 resize-none"></textarea>
         </div>
 
