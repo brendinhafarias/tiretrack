@@ -9,7 +9,7 @@
 {% endblock %}
 
 {% block content %}
-<div x-data="{ tab: '{{ request.args.get('tab', 'summary') }}', obsModal: false, discardConfirm: false }" class="space-y-4">
+<div x-data="{ tab: '{{ request.args.get('tab', 'summary') }}', obsModal: false, discardConfirm: false, deleteConfirm: false }" class="space-y-4">
 
   <!-- Header card -->
   <div class="bg-gray-800 rounded-xl p-5 border border-gray-700 flex flex-wrap items-start gap-4">
@@ -44,6 +44,17 @@
               class="bg-gray-700 hover:bg-gray-600 text-white text-sm px-4 py-2.5 rounded-lg min-h-[44px]">
         + Observação
       </button>
+      {% if current_user.is_team_admin %}
+      <button @click="deleteConfirm = true"
+              class="bg-gray-700 hover:bg-red-800 text-red-400 hover:text-white text-sm px-3 py-2.5 rounded-lg min-h-[44px] flex items-center gap-1 border border-red-900 hover:border-red-700 transition-colors"
+              title="Apagar pneu">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+        </svg>
+        Apagar
+      </button>
+      {% endif %}
     </div>
     {% endif %}
   </div>
@@ -361,6 +372,45 @@
       </form>
     </div>
   </div>
+
+  <!-- Delete confirmation modal -->
+  {% if current_user.is_team_admin %}
+  <div x-show="deleteConfirm" x-cloak
+       class="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4"
+       @keydown.escape.window="deleteConfirm = false">
+    <div class="bg-gray-800 border border-red-800 rounded-xl shadow-2xl p-6 w-full max-w-sm space-y-4"
+         @click.outside="deleteConfirm = false">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 bg-red-900 rounded-full flex items-center justify-center flex-shrink-0">
+          <svg class="w-5 h-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+          </svg>
+        </div>
+        <div>
+          <h3 class="font-bold text-white text-lg">Apagar pneu?</h3>
+          <p class="text-sm text-gray-400">Esta ação não pode ser desfeita.</p>
+        </div>
+      </div>
+      <p class="text-sm text-gray-300">
+        O pneu <strong class="text-white font-mono">{{ tire.code }}</strong> e todos os seus dados
+        (sessões, observações e fotos) serão permanentemente removidos.
+      </p>
+      <div class="flex gap-3 pt-1">
+        <button @click="deleteConfirm = false"
+                class="flex-1 bg-gray-700 hover:bg-gray-600 text-white text-sm font-medium py-2.5 rounded-lg transition-colors">
+          Cancelar
+        </button>
+        <form method="POST" action="{{ url_for('tires.delete', tire_id=tire.id) }}" class="flex-1">
+          <button type="submit"
+                  class="w-full bg-red-700 hover:bg-red-600 text-white text-sm font-semibold py-2.5 rounded-lg transition-colors">
+            Sim, apagar
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+  {% endif %}
 
 </div>
 {% endblock %}

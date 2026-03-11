@@ -1,0 +1,195 @@
+================================================================================
+  ROTEIRO DE VIDEO EXPLICATIVO — TireTrack Pro
+  Duracao estimada: 7 a 8 minutos
+  Idioma: Portugues (BR)
+  Formato: Narrador em off + gravacao de tela (screencast)
+================================================================================
+
+--------------------------------------------------------------------------------
+SEGMENTO 1 — ABERTURA (aprox. 30 segundos)
+--------------------------------------------------------------------------------
+
+[CENA: Logo animado do TireTrack Pro. Fundo escuro com elementos graficos de
+motorsport — tracos de pneu, cronometro, circuito.]
+
+NARRADOR:
+"Bem-vindo ao TireTrack Pro — o sistema de gestao de pneus desenvolvido
+especialmente para equipes de motorsport.
+
+Se voce gerencia pneus em campeonatos, sabe o quanto e critico controlar
+desgaste, historico de uso e desempenho em cada etapa.
+
+Neste video, vamos apresentar todas as funcionalidades do sistema em poucos
+minutos."
+
+--------------------------------------------------------------------------------
+SEGMENTO 2 — O PROBLEMA QUE O SISTEMA RESOLVE (aprox. 45 segundos)
+--------------------------------------------------------------------------------
+
+[CENA: Animacao ou imagem de planilhas confusas, post-its, anotacoes
+desorganizadas.]
+
+NARRADOR:
+"Muitas equipes ainda controlam pneus em planilhas manuais ou ate em papel.
+Isso gera riscos: dados perdidos, leituras inconsistentes entre mecanicos,
+dificuldade em rastrear o historico de cada pneu por piloto ou por etapa.
+
+O TireTrack Pro centraliza tudo isso em um unico sistema web, acessivel por
+toda a equipe, com controle de permissoes e relatorios prontos para uso."
+
+--------------------------------------------------------------------------------
+SEGMENTO 3 — LOGIN E VISAO GERAL DO SISTEMA (aprox. 45 segundos)
+--------------------------------------------------------------------------------
+
+[CENA: Tela de login do sistema. Mostrar preenchimento de usuario e senha.
+Apos login, mostrar o dashboard principal.]
+
+NARRADOR:
+"O acesso e feito pela tela de login. O sistema suporta multiplos niveis de
+usuario: administrador da equipe, usuario operacional e visualizador — cada
+um com suas proprias permissoes.
+
+Apos entrar, voce ve o Dashboard principal: uma tabela com todos os pneus
+da equipe, seus status atuais, e o indice de desgaste TWI de cada um,
+representado por cores intuitivas — verde para pneus em bom estado, amarelo
+para atencao, laranja para estado critico e vermelho para pneus descartaveis."
+
+[CENA: Destacar as cores na tabela do dashboard.]
+
+--------------------------------------------------------------------------------
+SEGMENTO 4 — CADASTRO DE PNEUS (aprox. 60 segundos)
+--------------------------------------------------------------------------------
+
+[CENA: Navegar ate o menu "Pneus". Clicar em "Novo Pneu". Preencher o
+formulario.]
+
+NARRADOR:
+"Para comecar, e necessario cadastrar os pneus da equipe. No menu 'Pneus',
+clique em 'Novo Pneu'.
+
+Voce preenche informacoes como o codigo de identificacao do pneu, a marca,
+o modelo, o composto — por exemplo, macio, medio ou duro — e o eixo, que
+pode ser dianteiro esquerdo, dianteiro direito, traseiro esquerdo ou
+traseiro direito.
+
+O campo mais importante e o TWI Inicial — o valor de profundidade de sulco
+medido quando o pneu e novo. Esse numero vai servir como referencia para
+todos os calculos de desgaste ao longo da vida util do pneu.
+
+Ao salvar, o pneu recebe o status 'disponivel' e fica pronto para ser
+agrupado em um set."
+
+--------------------------------------------------------------------------------
+SEGMENTO 5 — SETS E ETAPAS (aprox. 60 segundos)
+--------------------------------------------------------------------------------
+
+[CENA: Menu "Sets". Criar novo set. Associar pneus. Depois ir em "Etapas".]
+
+NARRADOR:
+"No motorsport, pneus sao sempre utilizados em conjuntos de quatro. O
+TireTrack Pro organiza isso com os Sets.
+
+No menu 'Sets', voce cria um conjunto, da um nome ou codigo a ele — por
+exemplo 'Set A - Composto Macio' — e associa os quatro pneus nas posicoes
+DE, DD, TE e TD. A partir desse momento, os pneus passam para o status
+'montado'.
+
+Ja as Etapas — ou Rounds — representam cada prova do campeonato. No menu
+'Etapas', voce cria uma nova etapa informando o circuito, a data e o
+campeonato. O sistema ja vem com os principais circuitos brasileiros
+pre-cadastrados, mas voce pode adicionar novos."
+
+--------------------------------------------------------------------------------
+SEGMENTO 6 — SESSOES E LEITURAS DE DESGASTE TWI (aprox. 90 segundos)
+--------------------------------------------------------------------------------
+
+[CENA: Dentro de uma Etapa, clicar em "Nova Sessao". Preencher nome da
+sessao — ex: Treino Livre 1. Registrar leituras de TWI por pneu.]
+
+NARRADOR:
+"Aqui esta o coracao do sistema: o registro de Sessoes.
+
+Dentro de uma etapa, voce cria sessoes para cada momento de pista —
+treinos, classificatorio, warmup e corrida. Para cada sessao, voce informa
+qual set foi utilizado e qual piloto estava ao volante.
+
+Apos a sessao, o mecanico registra as leituras do TWI atual de cada pneu —
+a medicao feita com o profundimetro logo apos o carro entrar nos boxes.
+
+O sistema calcula automaticamente o percentual de vida restante de cada
+pneu usando a formula: TWI atual dividido pelo TWI inicial, vezes cem.
+
+Por exemplo, se um pneu comecou com 8 milimetros e agora esta com 5, ele
+tem 62.5% de vida restante — exibido em amarelo no sistema.
+
+Voce consegue ver a evolucao do desgaste sessao por sessao, comparar pneus
+por posicao, por piloto e por etapa. Isso permite decisoes estrategicas
+muito mais embasadas: qual composto dura mais no circuito X, qual piloto
+desgasta mais os pneus traseiros, quando e hora de descartar."
+
+[CENA: Mostrar tabela de sessoes com valores TWI coloridos.]
+
+--------------------------------------------------------------------------------
+SEGMENTO 7 — OBSERVACOES E FOTOS (aprox. 45 segundos)
+--------------------------------------------------------------------------------
+
+[CENA: Dentro de um pneu, aba "Observacoes". Adicionar nova observacao com
+texto e foto.]
+
+NARRADOR:
+"Alem das medicoes, voce pode registrar Observacoes textuais em qualquer
+pneu — como descricoes de desgaste irregular, dano visible ou comportamento
+relatado pelo piloto.
+
+E possivel tambem anexar fotos diretamente pelo sistema. As imagens ficam
+vinculadas ao pneu e a sessao correspondente, criando um historico visual
+completo que facilita muito o trabalho tecnico entre etapas."
+
+--------------------------------------------------------------------------------
+SEGMENTO 8 — RELATORIOS (aprox. 30 segundos)
+--------------------------------------------------------------------------------
+
+[CENA: Menu "Relatorios". Selecionar etapa. Gerar PDF. Mostrar o relatorio.]
+
+NARRADOR:
+"Para compartilhar dados com a diretoria, patrocinadores ou a propria
+federacao, o TireTrack Pro gera relatorios em PDF com um clique.
+
+Selecione a etapa desejada, clique em gerar relatorio, e voce obtem um
+documento formatado com o resumo de todos os pneus, sessoes, leituras de
+desgaste e status da equipe."
+
+--------------------------------------------------------------------------------
+SEGMENTO 9 — PAINEL ADMINISTRATIVO (aprox. 30 segundos)
+--------------------------------------------------------------------------------
+
+[CENA: Menu "Admin". Mostrar gestao de usuarios, pilotos e circuitos.]
+
+NARRADOR:
+"O painel administrativo permite que o gestor da equipe gerencie usuarios
+— criando contas com diferentes niveis de acesso — alem de cadastrar
+pilotos e circuitos personalizados.
+
+O sistema e multi-equipe: cada equipe ve apenas os seus proprios dados,
+garantindo total privacidade e seguranca das informacoes."
+
+--------------------------------------------------------------------------------
+SEGMENTO 10 — ENCERRAMENTO (aprox. 20 segundos)
+--------------------------------------------------------------------------------
+
+[CENA: Volta para o logo do TireTrack Pro. Fade suave.]
+
+NARRADOR:
+"O TireTrack Pro foi desenvolvido para trazer profissionalismo e precisao
+para a gestao de pneus no motorsport brasileiro.
+
+Controle seu desgaste. Tome melhores decisoes. Venca mais corridas.
+
+Entre em contato e saiba como implementar o sistema na sua equipe."
+
+================================================================================
+  FIM DO ROTEIRO
+  Total estimado de palavras faladas: ~680
+  Velocidade media de narrador: ~130 palavras/min = aprox. 5,2 min de fala
+  Com pausas, transicoes e cenas: 7 a 8 minutos de video
+================================================================================

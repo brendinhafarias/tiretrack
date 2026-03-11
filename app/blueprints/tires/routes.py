@@ -275,6 +275,37 @@ def observation_delete(tire_id, obs_id):
     return redirect(url_for('tires.detail', tire_id=tire_id, tab='observations'))
 
 
+@tires_bp.route('/<int:tire_id>/delete', methods=['POST'])
+@login_required
+@require_write
+def delete(tire_id):
+    tire = Tire.query.filter_by(id=tire_id, team_id=current_user.team_id).first_or_404()
+
+    if not current_user.is_team_admin:
+        abort(403)
+
+    code = tire.code
+
+    # Remove all child records first (no cascade configured in models)
+    Session.query.filter_by(tire_id=tire_id).delete()
+    Observation.query.filter_by(tire_id=tire_id).delete()
+    TirePhoto.query.filter_by(tire_id=tire_id).delete()
+
+    # Remove from any active set positions
+    if tire.status == 'mounted':
+        active_set = tire.get_active_set()
+        if active_set:
+            for pos in ('tire_de_id', 'tire_dd_id', 'tire_te_id', 'tire_td_id'):
+                if getattr(active_set, pos) == tire_id:
+                    setattr(active_set, pos, None)
+
+    db.session.delete(tire)
+    db.session.commit()
+
+    flash(f'Pneu {code} removido com sucesso.', 'success')
+    return redirect(url_for('dashboard.index'))
+
+
 @tires_bp.route('/<int:tire_id>/status', methods=['POST'])
 @login_required
 @require_write
