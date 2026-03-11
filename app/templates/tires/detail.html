@@ -201,7 +201,7 @@
               <td class="px-4 py-3 text-right font-mono text-gray-300">{{ '%.1f'|format(s.km_session) }}</td>
               <td class="px-4 py-3 text-right font-mono text-gray-300">{{ '%.1f'|format(s.km_cumulative) }}</td>
               {% for val in [s.twi_int, s.twi_ci, s.twi_co, s.twi_ext] %}
-              <td class="px-2 py-3 text-center font-mono text-xs text-gray-200">{{ '%.1f'|format(val) }}</td>
+              <td class="px-2 py-3 text-center font-mono text-xs text-gray-200">{{ '%.1f'|format(val) if val is not none else '—' }}</td>
               {% endfor %}
               <td class="px-4 py-3 text-right">
                 <span class="text-xs font-bold {{ 'text-green-400' if (s.twi_pct_avg or 100) >= 70 else 'text-yellow-400' if (s.twi_pct_avg or 100) >= 40 else 'text-orange-400' if (s.twi_pct_avg or 100) >= 20 else 'text-red-400' }}">
