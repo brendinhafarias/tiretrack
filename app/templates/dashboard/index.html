@@ -259,6 +259,19 @@
                 +Sessão
               </a>
               {% endif %}
+              {% if current_user.is_team_admin %}
+              <form method="POST" action="{{ url_for('tires.delete', tire_id=t.id) }}"
+                    onsubmit="return confirm('Apagar pneu {{ t.code }}? Esta ação não pode ser desfeita.')">
+                <button type="submit"
+                        class="text-xs bg-gray-700 hover:bg-red-900 text-red-400 hover:text-white px-2 py-1.5 rounded-lg min-h-[32px] flex items-center transition-colors border border-red-900"
+                        title="Apagar pneu">
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                  </svg>
+                </button>
+              </form>
+              {% endif %}
             </div>
           </td>
         </tr>
@@ -316,18 +329,30 @@
         <span>{{ t.driver.name if t.driver else '—' }}</span>
       </div>
 
-      {% if current_user.can_write %}
       <div class="flex gap-2">
         <a href="{{ url_for('tires.detail', tire_id=t.id) }}"
            class="flex-1 text-center text-sm bg-gray-700 hover:bg-gray-600 text-white py-2.5 rounded-lg min-h-[44px] flex items-center justify-center">
           Ver histórico
         </a>
+        {% if current_user.can_write %}
         <a href="{{ url_for('tires.session_new', tire_id=t.id) }}"
            class="flex-1 text-center text-sm bg-red-600 hover:bg-red-700 text-white py-2.5 rounded-lg min-h-[44px] flex items-center justify-center">
           + Sessão
         </a>
+        {% endif %}
+        {% if current_user.is_team_admin %}
+        <form method="POST" action="{{ url_for('tires.delete', tire_id=t.id) }}"
+              onsubmit="return confirm('Apagar pneu {{ t.code }}? Esta ação não pode ser desfeita.')">
+          <button type="submit"
+                  class="px-3 text-sm bg-gray-700 hover:bg-red-900 text-red-400 hover:text-white py-2.5 rounded-lg min-h-[44px] flex items-center border border-red-900 transition-colors">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+            </svg>
+          </button>
+        </form>
+        {% endif %}
       </div>
-      {% endif %}
     </div>
     {% endfor %}
   </div>

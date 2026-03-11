@@ -82,6 +82,12 @@ def new():
     )
     db.session.add(tire_set)
 
+    # Update tire statuses to mounted
+    for tid in ids:
+        tire = Tire.query.get(tid)
+        if tire:
+            tire.status = 'mounted'
+
     db.session.commit()
     flash(f'Set "{name}" montado com sucesso!', 'success')
     return redirect(url_for('sets.index'))
@@ -99,6 +105,11 @@ def dismantle(set_id):
 
     tire_set.status = 'dismounted'
     tire_set.dismounted_at = datetime.utcnow()
+
+    # Restore tire statuses (keep blocked/trash as-is)
+    for tire in [tire_set.tire_de, tire_set.tire_dd, tire_set.tire_te, tire_set.tire_td]:
+        if tire and tire.status == 'mounted':
+            tire.status = 'available'
 
     db.session.commit()
     flash(f'Set "{tire_set.name}" desmontado. Pneus liberados.', 'success')
@@ -141,7 +152,12 @@ def swap(set_id):
 
     field, old_tire = pos_map[position]
 
+    # Free old tire
+    if old_tire and old_tire.status == 'mounted':
+        old_tire.status = 'available'
+
     setattr(tire_set, field, new_tire.id)
+    new_tire.status = 'mounted'
 
     db.session.commit()
     flash(f'Posição {position} trocada para pneu {new_tire.code}.', 'success')

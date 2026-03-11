@@ -424,8 +424,11 @@
               <option value="">Selecionar pneu...</option>
               {% for t in available_tires %}
               {% set pct = t.current_twi_pct or 100 %}
-              <option value="{{ t.id }}">
+              {% set t_set = t.get_active_set() %}
+              <option value="{{ t.id }}" {% if t.status == 'mounted' %}style="color:#f59e0b"{% endif %}>
                 {{ t.code }}
+                [{{ 'Wet' if t.tire_type == 'wet' else 'Slick' }}]
+                {{ '— Em Set: ' + t_set.name if t_set else '' }}
                 ({{ '%.0f'|format(t.total_km or 0) }}km · {{ '%.0f'|format(pct) }}%{% if pct < 20 %} ⚠️{% endif %})
               </option>
               {% endfor %}
@@ -481,7 +484,10 @@
               <option value="">Selecionar pneu disponível...</option>
               {% for t in available_tires %}
               {% set pct = t.current_twi_pct or 100 %}
-              <option value="{{ t.id }}">{{ t.code }} — {{ '%.0f'|format(t.total_km or 0) }}km · {{ '%.0f'|format(pct) }}%</option>
+              {% set t_set = t.get_active_set() %}
+              <option value="{{ t.id }}" {% if t.status == 'mounted' %}style="color:#f59e0b"{% endif %}>
+                {{ t.code }} [{{ 'Wet' if t.tire_type == 'wet' else 'Slick' }}]{{ ' — Em Set: ' + t_set.name if t_set else '' }} — {{ '%.0f'|format(t.total_km or 0) }}km · {{ '%.0f'|format(pct) }}%
+              </option>
               {% endfor %}
             </select>
             <button type="button"
