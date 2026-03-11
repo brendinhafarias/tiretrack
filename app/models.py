@@ -209,12 +209,14 @@ class Tire(db.Model):
         self.current_twi_ci = twi_ci
         self.current_twi_co = twi_co
         self.current_twi_ext = twi_ext
-        self.current_twi_avg = round((twi_int + twi_ci + twi_co + twi_ext) / 4, 2)
-        pct_int = (twi_int / self.twi_initial_int) * 100 if self.twi_initial_int else 100
-        pct_ci = (twi_ci / self.twi_initial_ci) * 100 if self.twi_initial_ci else 100
-        pct_co = (twi_co / self.twi_initial_co) * 100 if self.twi_initial_co else 100
-        pct_ext = (twi_ext / self.twi_initial_ext) * 100 if self.twi_initial_ext else 100
-        self.current_twi_pct = round((pct_int + pct_ci + pct_co + pct_ext) / 4, 1)
+        vals = [v for v in [twi_int, twi_ci, twi_co, twi_ext] if v is not None]
+        self.current_twi_avg = round(sum(vals) / len(vals), 2) if vals else None
+        pct_int = (twi_int / self.twi_initial_int) * 100 if twi_int is not None and self.twi_initial_int else None
+        pct_ci  = (twi_ci  / self.twi_initial_ci)  * 100 if twi_ci  is not None and self.twi_initial_ci  else None
+        pct_co  = (twi_co  / self.twi_initial_co)  * 100 if twi_co  is not None and self.twi_initial_co  else None
+        pct_ext = (twi_ext / self.twi_initial_ext) * 100 if twi_ext is not None and self.twi_initial_ext else None
+        pcts = [p for p in [pct_int, pct_ci, pct_co, pct_ext] if p is not None]
+        self.current_twi_pct = round(sum(pcts) / len(pcts), 1) if pcts else None
 
     def get_active_set(self):
         return TireSet.query.filter(

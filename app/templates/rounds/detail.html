@@ -167,10 +167,13 @@
                 {% for s in eg.sessions %}
                 <div class="text-center">
                   <div class="text-xs text-gray-500">{{ s.position or s.tire.code }}</div>
-                  {% if s.twi_pct_avg is not none %}
+                  {% set s_complete = s.twi_int is not none and s.twi_ci is not none and s.twi_co is not none and s.twi_ext is not none %}
+                  {% if s_complete %}
                   <span class="text-xs font-bold {{ 'text-green-400' if s.twi_pct_avg >= 70 else 'text-yellow-400' if s.twi_pct_avg >= 40 else 'text-orange-400' if s.twi_pct_avg >= 20 else 'text-red-400' }}">
                     {{ '%.0f'|format(s.twi_pct_avg) }}%
                   </span>
+                  {% elif s.twi_pct_avg is not none %}
+                  <span class="text-xs font-bold text-amber-400" title="TWI parcial">~{{ '%.0f'|format(s.twi_pct_avg) }}%⚠</span>
                   {% else %}
                   <span class="text-xs text-amber-400" title="Sem TWI">⚠</span>
                   {% endif %}

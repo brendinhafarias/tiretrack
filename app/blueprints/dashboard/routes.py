@@ -3,7 +3,7 @@ from flask_login import login_required, current_user
 from app.blueprints.dashboard import dashboard_bp
 from app.models import Tire, TireSet, Driver, Session
 from app.extensions import db
-from sqlalchemy import func
+from sqlalchemy import func, or_
 
 
 @dashboard_bp.route('/')
@@ -52,7 +52,12 @@ def index():
     no_twi_tire_ids = set(
         row.tire_id for row in db.session.query(Session.tire_id).join(
             latest_sub, Session.id == latest_sub.c.max_id
-        ).filter(Session.twi_avg.is_(None)).all()
+        ).filter(or_(
+            Session.twi_int.is_(None),
+            Session.twi_ci.is_(None),
+            Session.twi_co.is_(None),
+            Session.twi_ext.is_(None),
+        )).all()
     )
 
     # Build enriched data for each tire

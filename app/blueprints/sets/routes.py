@@ -4,7 +4,7 @@ from flask_login import login_required, current_user
 from app.blueprints.sets import sets_bp
 from app.models import TireSet, Tire, Driver, PitStop, PitStopChange
 from app.extensions import db
-from app.utils import require_write
+from app.utils import require_write, calc_twi
 
 
 @sets_bp.route('/')
@@ -213,22 +213,16 @@ def session_new(set_id):
             twi_ci_raw  = request.form.get(f'{pos.lower()}_twi_ci',  '').strip()
             twi_co_raw  = request.form.get(f'{pos.lower()}_twi_co',  '').strip()
             twi_ext_raw = request.form.get(f'{pos.lower()}_twi_ext', '').strip()
-            has_twi = all([twi_int_raw, twi_ci_raw, twi_co_raw, twi_ext_raw])
+            twi_data = calc_twi(twi_int_raw, twi_ci_raw, twi_co_raw, twi_ext_raw,
+                                tire.twi_initial_int, tire.twi_initial_ci,
+                                tire.twi_initial_co, tire.twi_initial_ext)
 
-            if has_twi:
-                twi_int = float(twi_int_raw)
-                twi_ci  = float(twi_ci_raw)
-                twi_co  = float(twi_co_raw)
-                twi_ext = float(twi_ext_raw)
-                twi_avg = round((twi_int + twi_ci + twi_co + twi_ext) / 4, 2)
-                pct_int = round((twi_int / tire.twi_initial_int) * 100, 1) if tire.twi_initial_int else 100
-                pct_ci  = round((twi_ci  / tire.twi_initial_ci)  * 100, 1) if tire.twi_initial_ci  else 100
-                pct_co  = round((twi_co  / tire.twi_initial_co)  * 100, 1) if tire.twi_initial_co  else 100
-                pct_ext = round((twi_ext / tire.twi_initial_ext) * 100, 1) if tire.twi_initial_ext else 100
-                pct_avg = round((pct_int + pct_ci + pct_co + pct_ext) / 4, 1)
-            else:
-                twi_int = twi_ci = twi_co = twi_ext = twi_avg = None
-                pct_int = pct_ci = pct_co = pct_ext = pct_avg = None
+            twi_int = twi_ci = twi_co = twi_ext = twi_avg = None
+            pct_int = pct_ci = pct_co = pct_ext = pct_avg = None
+            if twi_data:
+                twi_int, twi_ci, twi_co, twi_ext = twi_data['twi_int'], twi_data['twi_ci'], twi_data['twi_co'], twi_data['twi_ext']
+                twi_avg = twi_data['twi_avg']
+                pct_int, pct_ci, pct_co, pct_ext, pct_avg = twi_data['pct_int'], twi_data['pct_ci'], twi_data['pct_co'], twi_data['pct_ext'], twi_data['pct_avg']
 
             km_cumulative = (tire.total_km or 0) + km_session
             notes = request.form.get(f'{pos.lower()}_notes', '').strip() or None
@@ -256,13 +250,13 @@ def session_new(set_id):
 
             tire.total_km = km_cumulative
             tire.total_laps = (tire.total_laps or 0) + laps
-            if has_twi:
+            if twi_data:
                 tire.update_current_twi(twi_int, twi_ci, twi_co, twi_ext)
 
             created += 1
-            if has_twi and pct_avg < 20:
+            if twi_data and pct_avg is not None and pct_avg < 20:
                 alerts.append(f'{tire.code} ({pos}) CRÍTICO: {pct_avg:.0f}%')
-            elif has_twi and pct_avg < 40:
+            elif twi_data and pct_avg is not None and pct_avg < 40:
                 alerts.append(f'{tire.code} ({pos}) alerta: {pct_avg:.0f}%')
 
         db.session.commit()
@@ -360,22 +354,16 @@ def pitstop_new(set_id):
             twi_ci_raw  = request.form.get(f'{pos.lower()}_twi_ci',  '').strip()
             twi_co_raw  = request.form.get(f'{pos.lower()}_twi_co',  '').strip()
             twi_ext_raw = request.form.get(f'{pos.lower()}_twi_ext', '').strip()
-            has_twi = all([twi_int_raw, twi_ci_raw, twi_co_raw, twi_ext_raw])
+            twi_data = calc_twi(twi_int_raw, twi_ci_raw, twi_co_raw, twi_ext_raw,
+                                tire_out.twi_initial_int, tire_out.twi_initial_ci,
+                                tire_out.twi_initial_co, tire_out.twi_initial_ext)
 
-            if has_twi:
-                twi_int = float(twi_int_raw)
-                twi_ci  = float(twi_ci_raw)
-                twi_co  = float(twi_co_raw)
-                twi_ext = float(twi_ext_raw)
-                twi_avg = round((twi_int + twi_ci + twi_co + twi_ext) / 4, 2)
-                pct_int = round((twi_int / tire_out.twi_initial_int) * 100, 1) if tire_out.twi_initial_int else 100
-                pct_ci  = round((twi_ci  / tire_out.twi_initial_ci)  * 100, 1) if tire_out.twi_initial_ci  else 100
-                pct_co  = round((twi_co  / tire_out.twi_initial_co)  * 100, 1) if tire_out.twi_initial_co  else 100
-                pct_ext = round((twi_ext / tire_out.twi_initial_ext) * 100, 1) if tire_out.twi_initial_ext else 100
-                pct_avg = round((pct_int + pct_ci + pct_co + pct_ext) / 4, 1)
-            else:
-                twi_int = twi_ci = twi_co = twi_ext = twi_avg = None
-                pct_int = pct_ci = pct_co = pct_ext = pct_avg = None
+            twi_int = twi_ci = twi_co = twi_ext = twi_avg = None
+            pct_int = pct_ci = pct_co = pct_ext = pct_avg = None
+            if twi_data:
+                twi_int, twi_ci, twi_co, twi_ext = twi_data['twi_int'], twi_data['twi_ci'], twi_data['twi_co'], twi_data['twi_ext']
+                twi_avg = twi_data['twi_avg']
+                pct_int, pct_ci, pct_co, pct_ext, pct_avg = twi_data['pct_int'], twi_data['pct_ci'], twi_data['pct_co'], twi_data['pct_ext'], twi_data['pct_avg']
 
             km_cumulative = (tire_out.total_km or 0) + km_stint
 
@@ -403,7 +391,7 @@ def pitstop_new(set_id):
 
             tire_out.total_km = km_cumulative
             tire_out.total_laps = (tire_out.total_laps or 0) + lap_stop
-            if has_twi:
+            if twi_data:
                 tire_out.update_current_twi(twi_int, twi_ci, twi_co, twi_ext)
             tire_out.status = 'available'
 

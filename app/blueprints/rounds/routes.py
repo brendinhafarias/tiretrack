@@ -6,7 +6,7 @@ from flask_login import login_required, current_user
 from app.blueprints.rounds import rounds_bp
 from app.models import Round, Session, Tire, Driver
 from app.extensions import db
-from app.utils import get_team_tracks, require_write
+from app.utils import get_team_tracks, require_write, calc_twi
 
 _POS_ORDER = {'DE': 0, 'DD': 1, 'TE': 2, 'TD': 3}
 
@@ -222,32 +222,26 @@ def session_group_edit(round_id):
             twi_ci_raw  = request.form.get(f'{pos.lower()}_twi_ci',  '').strip()
             twi_co_raw  = request.form.get(f'{pos.lower()}_twi_co',  '').strip()
             twi_ext_raw = request.form.get(f'{pos.lower()}_twi_ext', '').strip()
-            has_twi = all([twi_int_raw, twi_ci_raw, twi_co_raw, twi_ext_raw])
+            tire = s.tire
+            twi_data = calc_twi(twi_int_raw, twi_ci_raw, twi_co_raw, twi_ext_raw,
+                                tire.twi_initial_int, tire.twi_initial_ci,
+                                tire.twi_initial_co, tire.twi_initial_ext)
 
-            if has_twi:
-                tire = s.tire
-                twi_int = float(twi_int_raw)
-                twi_ci  = float(twi_ci_raw)
-                twi_co  = float(twi_co_raw)
-                twi_ext = float(twi_ext_raw)
-                twi_avg = round((twi_int + twi_ci + twi_co + twi_ext) / 4, 2)
-                pct_int = round((twi_int / tire.twi_initial_int) * 100, 1) if tire.twi_initial_int else 100
-                pct_ci  = round((twi_ci  / tire.twi_initial_ci)  * 100, 1) if tire.twi_initial_ci  else 100
-                pct_co  = round((twi_co  / tire.twi_initial_co)  * 100, 1) if tire.twi_initial_co  else 100
-                pct_ext = round((twi_ext / tire.twi_initial_ext) * 100, 1) if tire.twi_initial_ext else 100
-                pct_avg = round((pct_int + pct_ci + pct_co + pct_ext) / 4, 1)
-
-                s.twi_int = twi_int; s.twi_ci = twi_ci; s.twi_co = twi_co; s.twi_ext = twi_ext
-                s.twi_avg = twi_avg
-                s.twi_pct_int = pct_int; s.twi_pct_ci = pct_ci; s.twi_pct_co = pct_co; s.twi_pct_ext = pct_ext
-                s.twi_pct_avg = pct_avg
+            if twi_data:
+                s.twi_int = twi_data['twi_int']; s.twi_ci = twi_data['twi_ci']
+                s.twi_co = twi_data['twi_co'];   s.twi_ext = twi_data['twi_ext']
+                s.twi_avg = twi_data['twi_avg']
+                s.twi_pct_int = twi_data['pct_int']; s.twi_pct_ci = twi_data['pct_ci']
+                s.twi_pct_co = twi_data['pct_co'];   s.twi_pct_ext = twi_data['pct_ext']
+                s.twi_pct_avg = twi_data['pct_avg']
 
                 latest_twi = SessionModel.query.filter(
                     SessionModel.tire_id == tire.id,
                     SessionModel.twi_avg.isnot(None)
                 ).order_by(SessionModel.date.desc(), SessionModel.id.desc()).first()
                 if latest_twi and latest_twi.id == s.id:
-                    tire.update_current_twi(twi_int, twi_ci, twi_co, twi_ext)
+                    tire.update_current_twi(twi_data['twi_int'], twi_data['twi_ci'],
+                                            twi_data['twi_co'], twi_data['twi_ext'])
 
     db.session.commit()
     flash('Sessão atualizada.', 'success')

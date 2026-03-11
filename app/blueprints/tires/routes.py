@@ -4,7 +4,7 @@ from flask_login import login_required, current_user
 from app.blueprints.tires import tires_bp
 from app.models import Tire, Session, Observation, Driver, Track, Round, TireSet, TirePhoto
 from app.extensions import db
-from app.utils import save_photo, get_team_tracks, require_write
+from app.utils import save_photo, get_team_tracks, require_write, calc_twi
 
 
 @tires_bp.route('/new', methods=['GET', 'POST'])
@@ -144,7 +144,9 @@ def session_new(tire_id):
         twi_ci_raw  = request.form.get('twi_ci',  '').strip()
         twi_co_raw  = request.form.get('twi_co',  '').strip()
         twi_ext_raw = request.form.get('twi_ext', '').strip()
-        has_twi = all([twi_int_raw, twi_ci_raw, twi_co_raw, twi_ext_raw])
+        twi_data = calc_twi(twi_int_raw, twi_ci_raw, twi_co_raw, twi_ext_raw,
+                            tire.twi_initial_int, tire.twi_initial_ci,
+                            tire.twi_initial_co, tire.twi_initial_ext)
 
         track = Track.query.get(track_id)
         if track and track.km_per_lap:
@@ -154,20 +156,12 @@ def session_new(tire_id):
 
         km_cumulative = tire.total_km + km_session
 
-        if has_twi:
-            twi_int = float(twi_int_raw)
-            twi_ci  = float(twi_ci_raw)
-            twi_co  = float(twi_co_raw)
-            twi_ext = float(twi_ext_raw)
-            twi_avg = round((twi_int + twi_ci + twi_co + twi_ext) / 4, 2)
-            pct_int = round((twi_int / tire.twi_initial_int) * 100, 1) if tire.twi_initial_int else 100
-            pct_ci  = round((twi_ci  / tire.twi_initial_ci)  * 100, 1) if tire.twi_initial_ci  else 100
-            pct_co  = round((twi_co  / tire.twi_initial_co)  * 100, 1) if tire.twi_initial_co  else 100
-            pct_ext = round((twi_ext / tire.twi_initial_ext) * 100, 1) if tire.twi_initial_ext else 100
-            pct_avg = round((pct_int + pct_ci + pct_co + pct_ext) / 4, 1)
-        else:
-            twi_int = twi_ci = twi_co = twi_ext = twi_avg = None
-            pct_int = pct_ci = pct_co = pct_ext = pct_avg = None
+        twi_int = twi_ci = twi_co = twi_ext = twi_avg = None
+        pct_int = pct_ci = pct_co = pct_ext = pct_avg = None
+        if twi_data:
+            twi_int, twi_ci, twi_co, twi_ext = twi_data['twi_int'], twi_data['twi_ci'], twi_data['twi_co'], twi_data['twi_ext']
+            twi_avg = twi_data['twi_avg']
+            pct_int, pct_ci, pct_co, pct_ext, pct_avg = twi_data['pct_int'], twi_data['pct_ci'], twi_data['pct_co'], twi_data['pct_ext'], twi_data['pct_avg']
 
         active_set = tire.get_active_set()
 
@@ -200,12 +194,15 @@ def session_new(tire_id):
 
         tire.total_km = km_cumulative
         tire.total_laps = (tire.total_laps or 0) + laps
-        if has_twi:
+        if twi_data:
             tire.update_current_twi(twi_int, twi_ci, twi_co, twi_ext)
 
         db.session.commit()
-        if has_twi:
+        twi_complete = twi_data and all(v is not None for v in [twi_int, twi_ci, twi_co, twi_ext])
+        if twi_complete:
             flash(f'Sessão registrada! TWI médio: {twi_avg:.1f}mm ({pct_avg:.0f}% restante)', 'success')
+        elif twi_data:
+            flash(f'Sessão registrada com TWI parcial. Preencha os pontos restantes depois.', 'warning')
         else:
             flash(f'Sessão registrada! {laps} voltas · {km_session:.1f} km (sem leitura TWI)', 'success')
         return redirect(url_for('tires.detail', tire_id=tire.id))

@@ -6,6 +6,36 @@ from flask import abort, current_app
 from flask_login import current_user
 
 
+def calc_twi(raw_int, raw_ci, raw_co, raw_ext, init_int, init_ci, init_co, init_ext):
+    """Calculate TWI values from raw form strings, allowing partial fills.
+    Returns a dict with all fields, or None if no data at all."""
+    twi_int = float(raw_int) if raw_int else None
+    twi_ci  = float(raw_ci)  if raw_ci  else None
+    twi_co  = float(raw_co)  if raw_co  else None
+    twi_ext = float(raw_ext) if raw_ext else None
+
+    filled = [v for v in [twi_int, twi_ci, twi_co, twi_ext] if v is not None]
+    if not filled:
+        return None
+
+    twi_avg = round(sum(filled) / len(filled), 2)
+
+    pct_int = round((twi_int / init_int) * 100, 1) if twi_int is not None and init_int else None
+    pct_ci  = round((twi_ci  / init_ci)  * 100, 1) if twi_ci  is not None and init_ci  else None
+    pct_co  = round((twi_co  / init_co)  * 100, 1) if twi_co  is not None and init_co  else None
+    pct_ext = round((twi_ext / init_ext) * 100, 1) if twi_ext is not None and init_ext else None
+
+    pcts = [p for p in [pct_int, pct_ci, pct_co, pct_ext] if p is not None]
+    pct_avg = round(sum(pcts) / len(pcts), 1) if pcts else None
+
+    return {
+        'twi_int': twi_int, 'twi_ci': twi_ci, 'twi_co': twi_co, 'twi_ext': twi_ext,
+        'twi_avg': twi_avg,
+        'pct_int': pct_int, 'pct_ci': pct_ci, 'pct_co': pct_co, 'pct_ext': pct_ext,
+        'pct_avg': pct_avg,
+    }
+
+
 def twi_pct(current_val, initial_val):
     if not initial_val or initial_val == 0:
         return 100.0
