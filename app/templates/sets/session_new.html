@@ -194,7 +194,6 @@
             <div>
               <input type="number"
                      name="{{ pos.lower() }}_{{ fname_suffix }}"
-                     required
                      min="0"
                      max="{{ init_val }}"
                      step="0.1"
@@ -312,17 +311,13 @@ function calcPct(pos) {
   const getVal = suffix => parseFloat(document.querySelector(`input[name="${prefix}_${suffix}"]`)?.value || 0);
 
   const vals = { int: getVal('twi_int'), ci: getVal('twi_ci'), co: getVal('twi_co'), ext: getVal('twi_ext') };
-  const hasAll = Object.values(vals).every(v => v > 0);
-  if (!hasAll) return;
+  const pairs = [
+    [vals.int, init.int], [vals.ci, init.ci], [vals.co, init.co], [vals.ext, init.ext]
+  ].filter(([v, i]) => v > 0 && i > 0);
+  if (!pairs.length) return;
 
-  const pcts = [
-    (vals.int / init.int) * 100,
-    (vals.ci  / init.ci)  * 100,
-    (vals.co  / init.co)  * 100,
-    (vals.ext / init.ext) * 100,
-  ].map(p => Math.min(p, 100));
-
-  const avg = pcts.reduce((a, b) => a + b, 0) / 4;
+  const pcts = pairs.map(([v, i]) => Math.min((v / i) * 100, 100));
+  const avg = pcts.reduce((a, b) => a + b, 0) / pcts.length;
 
   const label = document.getElementById(`pct-${pos}-label`);
   const bar = document.getElementById(`pct-${pos}-bar`);
