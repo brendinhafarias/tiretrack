@@ -309,12 +309,12 @@ class Session(db.Model):
     km_session = db.Column(db.Float, nullable=False)
     km_cumulative = db.Column(db.Float, nullable=False)
 
-    # TWI readings in mm
-    twi_int = db.Column(db.Float, nullable=False)
-    twi_ci = db.Column(db.Float, nullable=False)
-    twi_co = db.Column(db.Float, nullable=False)
-    twi_ext = db.Column(db.Float, nullable=False)
-    twi_avg = db.Column(db.Float, nullable=False)
+    # TWI readings in mm (nullable — session may be recorded without TWI measurement)
+    twi_int = db.Column(db.Float, nullable=True)
+    twi_ci = db.Column(db.Float, nullable=True)
+    twi_co = db.Column(db.Float, nullable=True)
+    twi_ext = db.Column(db.Float, nullable=True)
+    twi_avg = db.Column(db.Float, nullable=True)
 
     # TWI % remaining (calculated from initial values)
     twi_pct_int = db.Column(db.Float)

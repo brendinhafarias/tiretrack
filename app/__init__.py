@@ -54,6 +54,16 @@ def create_app(config_name='default'):
                 conn.execute(text('ALTER TABLE tires ADD COLUMN round_id INTEGER REFERENCES rounds(id)'))
                 conn.commit()
 
+            # Make Session TWI columns nullable (allow sessions without TWI readings)
+            session_cols = {c['name']: c for c in insp.get_columns('sessions')}
+            for col in ('twi_int', 'twi_ci', 'twi_co', 'twi_ext', 'twi_avg'):
+                if col in session_cols and not session_cols[col].get('nullable', True):
+                    try:
+                        conn.execute(text(f'ALTER TABLE sessions ALTER COLUMN {col} DROP NOT NULL'))
+                        conn.commit()
+                    except Exception:
+                        conn.rollback()
+
     # Context processors
     @app.context_processor
     def inject_globals():
