@@ -612,7 +612,7 @@ if (kmByTrack.length && document.getElementById('kmTrackChart')) {
       </div>
       <div>
         <label class="block text-xs text-gray-400 mb-1">Observações</label>
-        <textarea name="notes" rows="2" :value="editSession.notes" placeholder="Opcional…"
+        <textarea name="notes" rows="2" x-effect="$el.value = editSession.notes || ''" placeholder="Opcional…"
                   class="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-xl text-white text-sm focus:outline-none focus:border-red-500 resize-none"></textarea>
       </div>
       <div class="flex gap-3 pt-2">
