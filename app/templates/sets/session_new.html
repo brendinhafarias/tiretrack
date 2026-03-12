@@ -86,7 +86,10 @@
           </select>
         </div>
         <div>
-          <label class="block text-xs font-medium text-gray-400 mb-1.5">Voltas *</label>
+          <label class="block text-xs font-medium text-gray-400 mb-1.5">
+            Voltas totais da corrida *
+            {% if pit_swap_info %}<span class="text-blue-400 font-normal">(stint será ajustado por pneu)</span>{% endif %}
+          </label>
           <input type="number" name="laps" required min="1" step="1" inputmode="numeric"
                  @input="calcKm"
                  x-model="laps"
@@ -221,6 +224,12 @@
             </div>
           </div>
 
+          {% if tire.id in pit_swap_info %}
+          <div class="mb-3 px-3 py-2 bg-blue-950/40 border border-blue-800/50 rounded-lg text-xs text-blue-300">
+            Entrou na volta {{ pit_swap_info[tire.id] }} — voltas deste stint serão calculadas automaticamente
+          </div>
+          {% endif %}
+
           <!-- Pit stop swap (shown only when hasPitstop) -->
           <div x-show="hasPitstop" class="mb-3 p-3 bg-orange-950/40 border border-orange-800/50 rounded-lg space-y-2">
             <label class="flex items-center gap-2 cursor-pointer select-none">
@@ -259,6 +268,26 @@
                   <span x-text="'CI ' + (selectedTireInfo['{{ pos }}']?.twi_ci?.toFixed(1) ?? '—')"></span>
                   <span x-text="'CE ' + (selectedTireInfo['{{ pos }}']?.twi_co?.toFixed(1) ?? '—')"></span>
                   <span x-text="'EXT ' + (selectedTireInfo['{{ pos }}']?.twi_ext?.toFixed(1) ?? '—')"></span>
+                </div>
+              </div>
+              <!-- TWI do pneu que ENTRA -->
+              <div class="mt-2 pt-2 border-t border-orange-800/40 space-y-1.5">
+                <p class="text-xs text-gray-400">TWI do pneu que entra <span class="text-gray-600">(opcional)</span></p>
+                <div class="grid grid-cols-4 gap-1 text-center">
+                  <div class="text-xs text-gray-600">INT</div>
+                  <div class="text-xs text-gray-600">C-INT</div>
+                  <div class="text-xs text-gray-600">C-EXT</div>
+                  <div class="text-xs text-gray-600">EXT</div>
+                </div>
+                <div class="grid grid-cols-4 gap-1">
+                  <input type="number" name="{{ pos.lower() }}_in_twi_int" min="0" step="0.001" inputmode="decimal" placeholder="—"
+                         class="w-full px-1 py-1.5 bg-gray-900 border border-gray-700 rounded text-white text-center text-xs font-mono focus:outline-none focus:border-orange-400">
+                  <input type="number" name="{{ pos.lower() }}_in_twi_ci"  min="0" step="0.001" inputmode="decimal" placeholder="—"
+                         class="w-full px-1 py-1.5 bg-gray-900 border border-gray-700 rounded text-white text-center text-xs font-mono focus:outline-none focus:border-orange-400">
+                  <input type="number" name="{{ pos.lower() }}_in_twi_co"  min="0" step="0.001" inputmode="decimal" placeholder="—"
+                         class="w-full px-1 py-1.5 bg-gray-900 border border-gray-700 rounded text-white text-center text-xs font-mono focus:outline-none focus:border-orange-400">
+                  <input type="number" name="{{ pos.lower() }}_in_twi_ext" min="0" step="0.001" inputmode="decimal" placeholder="—"
+                         class="w-full px-1 py-1.5 bg-gray-900 border border-gray-700 rounded text-white text-center text-xs font-mono focus:outline-none focus:border-orange-400">
                 </div>
               </div>
               <p class="text-xs text-orange-500">TWI abaixo = pneu que SAI (volta <span x-text="lapStopVal || '?'"></span>)</p>

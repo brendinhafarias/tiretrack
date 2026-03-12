@@ -193,6 +193,10 @@ def session_new(set_id):
             'twi_ci':  t.current_twi_ci,
             'twi_co':  t.current_twi_co,
             'twi_ext': t.current_twi_ext,
+            'init_int': t.twi_initial_int,
+            'init_ci':  t.twi_initial_ci,
+            'init_co':  t.twi_initial_co,
+            'init_ext': t.twi_initial_ext,
         }
         for t in available_tires
     })
@@ -207,6 +211,14 @@ def session_new(set_id):
         pos: {'int': t.twi_initial_int, 'ci': t.twi_initial_ci, 'co': t.twi_initial_co, 'ext': t.twi_initial_ext}
         for pos, t in positions_tires if t
     })
+
+    # Detect tires recently swapped in (no session after swap) for automatic lap adjustment
+    recent_pit = PitStop.query.filter_by(set_id=tire_set.id, team_id=team_id).order_by(PitStop.id.desc()).first()
+    pit_swap_info = {}  # {tire_id: lap_stop}
+    if recent_pit:
+        for change in recent_pit.changes:
+            if Session.query.filter(Session.tire_id == change.tire_in_id, Session.laps > 0).count() == 0:
+                pit_swap_info[change.tire_in_id] = recent_pit.lap_stop
 
     pos_field_map = {
         'DE': 'tire_de_id',
@@ -283,6 +295,12 @@ def session_new(set_id):
                 laps_for_session = lap_stop
                 km_for_session = km_stint
                 notes_for_session = f'Pit stop — volta {lap_stop}'
+            elif tire.id in pit_swap_info:
+                # Tire entered mid-race; record only its stint laps
+                pit_lap = pit_swap_info[tire.id]
+                laps_for_session = max(0, laps - pit_lap)
+                km_for_session = round(laps_for_session * km_per_lap, 3) if km_per_lap else (round(km_session * laps_for_session / laps, 3) if laps else 0)
+                notes_for_session = request.form.get(f'{pos.lower()}_notes', '').strip() or None
             else:
                 laps_for_session = laps
                 km_for_session = km_session
@@ -326,9 +344,21 @@ def session_new(set_id):
                 new_tire_id = request.form.get(f'{pos.lower()}_new_tire_id')
                 tire_in = Tire.query.filter_by(id=int(new_tire_id), team_id=team_id).first() if new_tire_id else None
                 if tire_in:
+                    # TWI of incoming tire at pit entry (optional)
+                    in_twi_data = calc_twi(
+                        request.form.get(f'{pos.lower()}_in_twi_int', '').strip(),
+                        request.form.get(f'{pos.lower()}_in_twi_ci',  '').strip(),
+                        request.form.get(f'{pos.lower()}_in_twi_co',  '').strip(),
+                        request.form.get(f'{pos.lower()}_in_twi_ext', '').strip(),
+                        tire_in.twi_initial_int, tire_in.twi_initial_ci,
+                        tire_in.twi_initial_co, tire_in.twi_initial_ext,
+                    )
                     tire.status = 'available'
                     setattr(tire_set, pos_field_map[pos], tire_in.id)
                     tire_in.status = 'mounted'
+                    if in_twi_data:
+                        tire_in.update_current_twi(in_twi_data['twi_int'], in_twi_data['twi_ci'],
+                                                   in_twi_data['twi_co'], in_twi_data['twi_ext'])
                     db.session.add(PitStopChange(
                         pit_stop_id=pit_stop_obj.id,
                         position=pos,
@@ -356,6 +386,7 @@ def session_new(set_id):
                            available_tires=available_tires,
                            available_tires_json=available_tires_json,
                            tire_initials_json=tire_initials_json,
+                           pit_swap_info=pit_swap_info,
                            tracks=tracks,
                            rounds=rounds)
 
