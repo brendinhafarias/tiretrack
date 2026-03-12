@@ -129,6 +129,55 @@
       </div>
     </div>
 
+    <!-- Pit Stop section -->
+    <div class="bg-gray-800 rounded-xl p-5 border border-gray-700 space-y-3">
+      <label class="flex items-center gap-3 cursor-pointer select-none">
+        <input type="checkbox" name="has_pitstop" value="1" x-model="hasPitstop"
+               class="w-4 h-4 rounded accent-orange-500">
+        <span class="text-sm font-semibold text-white">Houve Pit Stop nesta corrida?</span>
+        <span class="text-xs text-gray-500 font-normal">(permite trocar pneus mid-race)</span>
+      </label>
+
+      <div x-show="hasPitstop" class="space-y-3 pt-1">
+        <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          <div>
+            <label class="block text-xs font-medium text-gray-400 mb-1.5">Volta do Pit Stop *</label>
+            <input type="number" name="lap_stop" min="1" step="1" inputmode="numeric"
+                   x-model="lapStopVal" @input="calcKmStint()"
+                   :required="hasPitstop"
+                   class="w-full px-3 py-2.5 bg-gray-900 border border-orange-600 rounded-xl text-white
+                          focus:outline-none focus:border-orange-400 font-mono text-lg text-center min-h-[44px]"
+                   placeholder="0">
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-400 mb-1.5">
+              Km do stint
+              <span x-show="kmPerLap > 0" class="text-gray-600">(auto)</span>
+            </label>
+            <input type="number" name="km_stint_manual"
+                   :readonly="kmPerLap > 0"
+                   :class="kmPerLap > 0 ? 'opacity-60' : ''"
+                   :value="kmStintResult"
+                   step="0.001" inputmode="decimal"
+                   class="w-full px-3 py-2.5 bg-gray-900 border border-orange-600 rounded-xl text-white
+                          focus:outline-none focus:border-orange-400 font-mono text-center min-h-[44px]"
+                   placeholder="0.000">
+          </div>
+          <div class="sm:col-span-1 col-span-2">
+            <label class="block text-xs font-medium text-gray-400 mb-1.5">Obs. do pit stop</label>
+            <input type="text" name="pitstop_notes"
+                   class="w-full px-3 py-2.5 bg-gray-900 border border-gray-600 rounded-xl text-white text-sm
+                          focus:outline-none focus:border-orange-400 min-h-[44px]"
+                   placeholder="Opcional">
+          </div>
+        </div>
+        <p class="text-xs text-orange-400">
+          Pneus trocados recebem sessão com <strong x-text="lapStopVal || '?'"></strong> voltas (stint).
+          Os que ficaram recebem as voltas totais da corrida.
+        </p>
+      </div>
+    </div>
+
     <!-- 2x2 tire grid -->
     <div>
       <h2 class="text-sm font-semibold text-gray-300 uppercase tracking-wide mb-3">
@@ -157,6 +206,28 @@
                 {{ '%.0f'|format(pct) }}%
               </div>
               <div class="text-xs text-gray-500">TWI atual</div>
+            </div>
+          </div>
+
+          <!-- Pit stop swap (shown only when hasPitstop) -->
+          <div x-show="hasPitstop" class="mb-3 p-3 bg-orange-950/40 border border-orange-800/50 rounded-lg space-y-2">
+            <label class="flex items-center gap-2 cursor-pointer select-none">
+              <input type="checkbox" name="{{ pos.lower() }}_swap" value="1"
+                     x-model="swaps['{{ pos }}']"
+                     class="w-4 h-4 rounded accent-orange-500">
+              <span class="text-xs text-orange-300 font-medium">Trocar pneu neste pit stop</span>
+            </label>
+            <div x-show="swaps['{{ pos }}']" class="space-y-1.5">
+              <label class="block text-xs text-gray-400">Novo pneu que entra</label>
+              <select name="{{ pos.lower() }}_new_tire_id"
+                      class="w-full px-3 py-2 bg-gray-900 border border-orange-600 rounded-lg text-white text-sm
+                             focus:outline-none focus:border-orange-400">
+                <option value="">Selecionar pneu...</option>
+                {% for t in available_tires %}
+                <option value="{{ t.id }}">{{ t.code }}{% if t.current_twi_pct %} — {{ '%.0f'|format(t.current_twi_pct) }}% TWI{% endif %}</option>
+                {% endfor %}
+              </select>
+              <p class="text-xs text-orange-500">TWI abaixo = pneu que SAI (volta <span x-text="lapStopVal || '?'"></span>)</p>
             </div>
           </div>
 
@@ -278,11 +349,16 @@ function setSessionForm() {
     laps: '',
     kmPerLap: 0,
     kmResult: '',
+    hasPitstop: false,
+    lapStopVal: '',
+    kmStintResult: '',
+    swaps: { DE: false, DD: false, TE: false, TD: false },
     trackChanged(e) {
       const opt = e.target.options[e.target.selectedIndex];
       const km = parseFloat(opt.dataset.km || 0);
       this.kmPerLap = km || 0;
       this.calcKm();
+      this.calcKmStint();
     },
     roundChanged(e) {
       const opt = e.target.options[e.target.selectedIndex];
@@ -298,6 +374,13 @@ function setSessionForm() {
     calcKm() {
       if (this.kmPerLap > 0 && this.laps) {
         this.kmResult = (parseFloat(this.laps) * this.kmPerLap).toFixed(3);
+      }
+    },
+    calcKmStint() {
+      if (this.kmPerLap > 0 && this.lapStopVal) {
+        this.kmStintResult = (parseFloat(this.lapStopVal) * this.kmPerLap).toFixed(3);
+      } else {
+        this.kmStintResult = '';
       }
     }
   }

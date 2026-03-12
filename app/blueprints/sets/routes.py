@@ -180,6 +180,7 @@ def session_new(set_id):
     team_id = current_user.team_id
     tracks = get_team_tracks(team_id)
     rounds = Round.query.filter_by(team_id=team_id, status='open').order_by(Round.name).all()
+    available_tires = Tire.query.filter_by(team_id=team_id, status='available').order_by(Tire.code).all()
 
     positions_tires = [
         ('DE', tire_set.tire_de),
@@ -187,6 +188,13 @@ def session_new(set_id):
         ('TE', tire_set.tire_te),
         ('TD', tire_set.tire_td),
     ]
+
+    pos_field_map = {
+        'DE': 'tire_de_id',
+        'DD': 'tire_dd_id',
+        'TE': 'tire_te_id',
+        'TD': 'tire_td_id',
+    }
 
     if request.method == 'POST':
         track_id = int(request.form.get('track_id'))
@@ -197,17 +205,45 @@ def session_new(set_id):
         km_manual = request.form.get('km_manual')
 
         track = Track.query.get(track_id)
-        if track and track.km_per_lap:
-            km_session = round(laps * track.km_per_lap, 3)
-        else:
-            km_session = float(km_manual or 0)
+        km_per_lap = track.km_per_lap if track and track.km_per_lap else None
+        km_session = round(laps * km_per_lap, 3) if km_per_lap else float(km_manual or 0)
+
+        # Pit stop handling
+        has_pitstop = request.form.get('has_pitstop') == '1'
+        lap_stop = None
+        km_stint = None
+        pit_stop_obj = None
+
+        if has_pitstop:
+            lap_stop_raw = request.form.get('lap_stop', '').strip()
+            if not lap_stop_raw or int(lap_stop_raw) <= 0:
+                flash('Informe a volta do pit stop.', 'error')
+                return redirect(url_for('sets.session_new', set_id=set_id))
+            lap_stop = int(lap_stop_raw)
+            km_stint = round(lap_stop * km_per_lap, 3) if km_per_lap else float(request.form.get('km_stint_manual') or 0)
+
+            pit_stop_obj = PitStop(
+                team_id=team_id,
+                set_id=tire_set.id,
+                round_id=int(round_id) if round_id else None,
+                track_id=track_id,
+                event_type=event_type,
+                date=session_date,
+                lap_stop=lap_stop,
+                notes=request.form.get('pitstop_notes', '').strip() or None,
+            )
+            db.session.add(pit_stop_obj)
+            db.session.flush()
 
         created = 0
         alerts = []
+        pitstop_changes = []
 
         for pos, tire in positions_tires:
             if not tire:
                 continue
+
+            is_swap = has_pitstop and request.form.get(f'{pos.lower()}_swap') == '1'
 
             twi_int_raw = request.form.get(f'{pos.lower()}_twi_int', '').strip()
             twi_ci_raw  = request.form.get(f'{pos.lower()}_twi_ci',  '').strip()
@@ -224,8 +260,16 @@ def session_new(set_id):
                 twi_avg = twi_data['twi_avg']
                 pct_int, pct_ci, pct_co, pct_ext, pct_avg = twi_data['pct_int'], twi_data['pct_ci'], twi_data['pct_co'], twi_data['pct_ext'], twi_data['pct_avg']
 
-            km_cumulative = (tire.total_km or 0) + km_session
-            notes = request.form.get(f'{pos.lower()}_notes', '').strip() or None
+            if is_swap:
+                laps_for_session = lap_stop
+                km_for_session = km_stint
+                notes_for_session = f'Pit stop — volta {lap_stop}'
+            else:
+                laps_for_session = laps
+                km_for_session = km_session
+                notes_for_session = request.form.get(f'{pos.lower()}_notes', '').strip() or None
+
+            km_cumulative = (tire.total_km or 0) + km_for_session
 
             session = Session(
                 team_id=team_id,
@@ -237,19 +281,19 @@ def session_new(set_id):
                 event_type=event_type,
                 position=pos,
                 date=session_date,
-                laps=laps,
-                km_session=km_session,
+                laps=laps_for_session,
+                km_session=km_for_session,
                 km_cumulative=km_cumulative,
                 twi_int=twi_int, twi_ci=twi_ci, twi_co=twi_co, twi_ext=twi_ext,
                 twi_avg=twi_avg,
                 twi_pct_int=pct_int, twi_pct_ci=pct_ci, twi_pct_co=pct_co, twi_pct_ext=pct_ext,
                 twi_pct_avg=pct_avg,
-                notes=notes,
+                notes=notes_for_session,
             )
             db.session.add(session)
 
             tire.total_km = km_cumulative
-            tire.total_laps = (tire.total_laps or 0) + laps
+            tire.total_laps = (tire.total_laps or 0) + laps_for_session
             if twi_data:
                 tire.update_current_twi(twi_int, twi_ci, twi_co, twi_ext)
 
@@ -259,9 +303,28 @@ def session_new(set_id):
             elif twi_data and pct_avg is not None and pct_avg < 40:
                 alerts.append(f'{tire.code} ({pos}) alerta: {pct_avg:.0f}%')
 
+            if is_swap:
+                new_tire_id = request.form.get(f'{pos.lower()}_new_tire_id')
+                tire_in = Tire.query.filter_by(id=int(new_tire_id), team_id=team_id).first() if new_tire_id else None
+                if tire_in:
+                    tire.status = 'available'
+                    setattr(tire_set, pos_field_map[pos], tire_in.id)
+                    tire_in.status = 'mounted'
+                    db.session.add(PitStopChange(
+                        pit_stop_id=pit_stop_obj.id,
+                        position=pos,
+                        tire_out_id=tire.id,
+                        tire_in_id=tire_in.id,
+                        twi_int=twi_int, twi_ci=twi_ci, twi_co=twi_co, twi_ext=twi_ext,
+                    ))
+                    pitstop_changes.append(f'{pos}: {tire.code} → {tire_in.code}')
+
         db.session.commit()
 
-        if alerts:
+        if has_pitstop and pitstop_changes:
+            msg = f'Sessão + Pit stop (v.{lap_stop}) · {" | ".join(pitstop_changes)}'
+            flash(msg + (f' ⚠️ {" | ".join(alerts)}' if alerts else ''), 'warning' if alerts else 'success')
+        elif alerts:
             flash(f'Sessão do set "{tire_set.name}" registrada! ⚠️ {" | ".join(alerts)}', 'warning')
         else:
             flash(f'Sessão do set "{tire_set.name}" registrada para {created} pneu(s)! ✓', 'success')
@@ -271,6 +334,7 @@ def session_new(set_id):
     return render_template('sets/session_new.html',
                            tire_set=tire_set,
                            positions_tires=positions_tires,
+                           available_tires=available_tires,
                            tracks=tracks,
                            rounds=rounds)
 
