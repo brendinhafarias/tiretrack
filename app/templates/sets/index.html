@@ -172,10 +172,6 @@
             </svg>
             Registrar Saída
           </a>
-          <a href="{{ url_for('sets.pitstop_new', set_id=s.id) }}"
-             class="flex-1 text-center py-2.5 bg-orange-600 hover:bg-orange-700 text-white text-sm font-semibold rounded-lg min-h-[44px] flex items-center justify-center gap-1">
-            🔧 Pit Stop
-          </a>
           <form method="POST" action="{{ url_for('sets.dismantle', set_id=s.id) }}"
                 onsubmit="return confirm('Desmontar set {{ s.name }}? Os pneus voltarão para disponível.')"
                 class="flex-1">

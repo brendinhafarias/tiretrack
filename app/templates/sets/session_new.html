@@ -11,6 +11,18 @@
 {% block content %}
 <div class="max-w-4xl mx-auto" x-data="setSessionForm()">
 
+  <!-- Mobile sticky back button -->
+  <div class="sm:hidden sticky top-0 z-20 bg-gray-900/95 border-b border-gray-700 px-4 py-2 -mx-4 mb-4 flex items-center gap-3">
+    <a href="{{ url_for('sets.index') }}" class="flex items-center gap-1.5 text-gray-300 hover:text-white text-sm font-medium">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+      </svg>
+      Voltar
+    </a>
+    <span class="text-gray-600">·</span>
+    <span class="text-white text-sm font-semibold truncate">{{ tire_set.name }}</span>
+  </div>
+
   <!-- Set info bar -->
   <div class="bg-gray-800 rounded-xl p-4 border border-gray-700 mb-5 flex flex-wrap items-center gap-4">
     <div class="flex-1">
@@ -220,6 +232,7 @@
             <div x-show="swaps['{{ pos }}']" class="space-y-1.5">
               <label class="block text-xs text-gray-400">Novo pneu que entra</label>
               <select name="{{ pos.lower() }}_new_tire_id"
+                      @change="tireSelected('{{ pos }}', $event.target.value)"
                       class="w-full px-3 py-2 bg-gray-900 border border-orange-600 rounded-lg text-white text-sm
                              focus:outline-none focus:border-orange-400">
                 <option value="">Selecionar pneu...</option>
@@ -227,6 +240,27 @@
                 <option value="{{ t.id }}">{{ t.code }}{% if t.current_twi_pct %} — {{ '%.0f'|format(t.current_twi_pct) }}% TWI{% endif %}</option>
                 {% endfor %}
               </select>
+              <!-- Tire info panel -->
+              <div x-show="selectedTireInfo['{{ pos }}']"
+                   class="bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-xs space-y-1.5">
+                <div class="flex items-center justify-between">
+                  <span class="font-mono font-bold text-white text-sm" x-text="selectedTireInfo['{{ pos }}']?.code"></span>
+                  <span class="font-bold"
+                        :class="(selectedTireInfo['{{ pos }}']?.pct||100) >= 70 ? 'text-green-400' : (selectedTireInfo['{{ pos }}']?.pct||100) >= 40 ? 'text-yellow-400' : (selectedTireInfo['{{ pos }}']?.pct||100) >= 20 ? 'text-orange-400' : 'text-red-400'"
+                        x-text="(selectedTireInfo['{{ pos }}']?.pct||100).toFixed(0) + '% TWI'"></span>
+                </div>
+                <div class="text-gray-400 flex gap-3 flex-wrap">
+                  <span x-text="(selectedTireInfo['{{ pos }}']?.total_km||0).toFixed(0) + ' km'"></span>
+                  <span x-text="(selectedTireInfo['{{ pos }}']?.total_laps||0) + ' v'"></span>
+                  <span class="capitalize" x-text="selectedTireInfo['{{ pos }}']?.compound"></span>
+                </div>
+                <div class="font-mono text-gray-500 flex gap-2">
+                  <span x-text="'INT ' + (selectedTireInfo['{{ pos }}']?.twi_int?.toFixed(1) ?? '—')"></span>
+                  <span x-text="'CI ' + (selectedTireInfo['{{ pos }}']?.twi_ci?.toFixed(1) ?? '—')"></span>
+                  <span x-text="'CE ' + (selectedTireInfo['{{ pos }}']?.twi_co?.toFixed(1) ?? '—')"></span>
+                  <span x-text="'EXT ' + (selectedTireInfo['{{ pos }}']?.twi_ext?.toFixed(1) ?? '—')"></span>
+                </div>
+              </div>
               <p class="text-xs text-orange-500">TWI abaixo = pneu que SAI (volta <span x-text="lapStopVal || '?'"></span>)</p>
             </div>
           </div>
@@ -329,20 +363,11 @@
 {% endblock %}
 
 {% block scripts %}
+<script type="application/json" id="available-tires-data">{{ available_tires_json | safe }}</script>
+<script type="application/json" id="tire-initials-data">{{ tire_initials_json | safe }}</script>
 <script>
-// Inject tire initial values for JS calculations
-const tireInitials = {
-  {% for pos, tire in positions_tires %}
-  {% if tire %}
-  '{{ pos }}': {
-    int: {{ tire.twi_initial_int }},
-    ci:  {{ tire.twi_initial_ci }},
-    co:  {{ tire.twi_initial_co }},
-    ext: {{ tire.twi_initial_ext }}
-  },
-  {% endif %}
-  {% endfor %}
-};
+const availableTiresData = JSON.parse(document.getElementById('available-tires-data').textContent);
+const tireInitials = JSON.parse(document.getElementById('tire-initials-data').textContent);
 
 function setSessionForm() {
   return {
@@ -353,6 +378,10 @@ function setSessionForm() {
     lapStopVal: '',
     kmStintResult: '',
     swaps: { DE: false, DD: false, TE: false, TD: false },
+    selectedTireInfo: { DE: null, DD: null, TE: null, TD: null },
+    tireSelected(pos, id) {
+      this.selectedTireInfo[pos] = id ? (availableTiresData[id] || null) : null;
+    },
     trackChanged(e) {
       const opt = e.target.options[e.target.selectedIndex];
       const km = parseFloat(opt.dataset.km || 0);

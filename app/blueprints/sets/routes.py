@@ -1,3 +1,4 @@
+import json
 from datetime import datetime
 from flask import render_template, redirect, url_for, flash, request
 from flask_login import login_required, current_user
@@ -181,6 +182,20 @@ def session_new(set_id):
     tracks = get_team_tracks(team_id)
     rounds = Round.query.filter_by(team_id=team_id, status='open').order_by(Round.name).all()
     available_tires = Tire.query.filter_by(team_id=team_id, status='available').order_by(Tire.code).all()
+    available_tires_json = json.dumps({
+        t.id: {
+            'code': t.code,
+            'compound': t.compound or '',
+            'total_km': t.total_km or 0,
+            'total_laps': t.total_laps or 0,
+            'pct': t.current_twi_pct or 100,
+            'twi_int': t.current_twi_int,
+            'twi_ci':  t.current_twi_ci,
+            'twi_co':  t.current_twi_co,
+            'twi_ext': t.current_twi_ext,
+        }
+        for t in available_tires
+    })
 
     positions_tires = [
         ('DE', tire_set.tire_de),
@@ -188,6 +203,10 @@ def session_new(set_id):
         ('TE', tire_set.tire_te),
         ('TD', tire_set.tire_td),
     ]
+    tire_initials_json = json.dumps({
+        pos: {'int': t.twi_initial_int, 'ci': t.twi_initial_ci, 'co': t.twi_initial_co, 'ext': t.twi_initial_ext}
+        for pos, t in positions_tires if t
+    })
 
     pos_field_map = {
         'DE': 'tire_de_id',
@@ -335,6 +354,8 @@ def session_new(set_id):
                            tire_set=tire_set,
                            positions_tires=positions_tires,
                            available_tires=available_tires,
+                           available_tires_json=available_tires_json,
+                           tire_initials_json=tire_initials_json,
                            tracks=tracks,
                            rounds=rounds)
 
