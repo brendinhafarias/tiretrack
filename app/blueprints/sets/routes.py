@@ -269,10 +269,14 @@ def session_new(set_id):
         created = 0
         alerts = []
         pitstop_changes = []
+        processed_tire_ids = set()
 
         for pos, tire in positions_tires:
             if not tire:
                 continue
+            if tire.id in processed_tire_ids:
+                continue  # skip duplicate tire (same tire mounted at multiple positions)
+            processed_tire_ids.add(tire.id)
 
             is_swap = has_pitstop and request.form.get(f'{pos.lower()}_swap') == '1'
 
@@ -359,6 +363,37 @@ def session_new(set_id):
                     if in_twi_data:
                         tire_in.update_current_twi(in_twi_data['twi_int'], in_twi_data['twi_ci'],
                                                    in_twi_data['twi_co'], in_twi_data['twi_ext'])
+                    # Session for incoming tire (stint from pit entry to race end)
+                    laps_in = max(0, laps - lap_stop)
+                    km_in = round(laps_in * km_per_lap, 3) if km_per_lap else (round(km_session * laps_in / laps, 3) if laps else 0)
+                    km_cumulative_in = (tire_in.total_km or 0) + km_in
+                    db.session.add(Session(
+                        team_id=team_id,
+                        tire_id=tire_in.id,
+                        set_id=tire_set.id,
+                        round_id=int(round_id) if round_id else None,
+                        track_id=track_id,
+                        driver_id=tire_set.driver_id,
+                        event_type=event_type,
+                        position=pos,
+                        date=session_date,
+                        laps=laps_in,
+                        km_session=km_in,
+                        km_cumulative=km_cumulative_in,
+                        twi_int=in_twi_data['twi_int'] if in_twi_data else None,
+                        twi_ci=in_twi_data['twi_ci']  if in_twi_data else None,
+                        twi_co=in_twi_data['twi_co']  if in_twi_data else None,
+                        twi_ext=in_twi_data['twi_ext'] if in_twi_data else None,
+                        twi_avg=in_twi_data['twi_avg'] if in_twi_data else None,
+                        twi_pct_int=in_twi_data['pct_int'] if in_twi_data else None,
+                        twi_pct_ci=in_twi_data['pct_ci']  if in_twi_data else None,
+                        twi_pct_co=in_twi_data['pct_co']  if in_twi_data else None,
+                        twi_pct_ext=in_twi_data['pct_ext'] if in_twi_data else None,
+                        twi_pct_avg=in_twi_data['pct_avg'] if in_twi_data else None,
+                        notes=f'Pit stop entrada — volta {lap_stop}',
+                    ))
+                    tire_in.total_km = km_cumulative_in
+                    tire_in.total_laps = (tire_in.total_laps or 0) + laps_in
                     db.session.add(PitStopChange(
                         pit_stop_id=pit_stop_obj.id,
                         position=pos,
