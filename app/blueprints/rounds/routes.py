@@ -20,11 +20,26 @@ def index():
     drivers = Driver.query.filter_by(team_id=team_id, is_active=True).all()
     tracks = get_team_tracks(team_id)
 
+    # Count distinct event groups per round (matches detail page logic)
+    all_round_ids = [r.id for r in open_rounds + closed_rounds]
+    round_event_counts = {}
+    if all_round_ids:
+        from collections import defaultdict
+        group_sets = defaultdict(set)
+        all_sessions = Session.query.filter(
+            Session.round_id.in_(all_round_ids)
+        ).with_entities(Session.round_id, Session.set_id, Session.date, Session.event_type, Session.id).all()
+        for s in all_sessions:
+            key = (s.set_id, s.date.isoformat(), s.event_type) if s.set_id else ('solo', s.id)
+            group_sets[s.round_id].add(key)
+        round_event_counts = {rid: len(keys) for rid, keys in group_sets.items()}
+
     return render_template('rounds/index.html',
                            open_rounds=open_rounds,
                            closed_rounds=closed_rounds,
                            drivers=drivers,
-                           tracks=tracks)
+                           tracks=tracks,
+                           round_event_counts=round_event_counts)
 
 
 @rounds_bp.route('/new', methods=['POST'])

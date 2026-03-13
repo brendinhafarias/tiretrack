@@ -37,7 +37,7 @@
           {% if rnd.start_date %}
           <div>{{ rnd.start_date.strftime('%d/%m/%Y') }}{% if rnd.end_date %} → {{ rnd.end_date.strftime('%d/%m/%Y') }}{% endif %}</div>
           {% endif %}
-          <div>{{ rnd.sessions.count() }} sessão(ões)</div>
+          <div>{{ round_event_counts.get(rnd.id, 0) }} sessão(ões)</div>
         </div>
       </a>
       {% endfor %}
@@ -73,7 +73,7 @@
               {% if rnd.start_date %}{{ rnd.start_date.strftime('%d/%m/%y') }}{% endif %}
               {% if rnd.end_date %} — {{ rnd.end_date.strftime('%d/%m/%y') }}{% endif %}
             </td>
-            <td class="px-4 py-3 text-right text-gray-400">{{ rnd.sessions.count() }}</td>
+            <td class="px-4 py-3 text-right text-gray-400">{{ round_event_counts.get(rnd.id, 0) }}</td>
             <td class="px-4 py-3 text-right">
               <a href="{{ url_for('rounds.detail', round_id=rnd.id) }}" class="text-xs bg-gray-700 hover:bg-gray-600 text-white px-3 py-1.5 rounded-lg mr-1">Ver</a>
               <a href="{{ url_for('reports.round_pdf', round_id=rnd.id) }}" target="_blank" class="text-xs bg-red-700 hover:bg-red-600 text-white px-3 py-1.5 rounded-lg">PDF</a>
