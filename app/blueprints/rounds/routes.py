@@ -46,10 +46,13 @@ def index():
             group_sets[s.round_id].add(key)
         round_event_counts = {rid: len(keys) for rid, keys in group_sets.items()}
 
+    drivers_json = [{'id': d.id, 'name': d.name, 'category': d.category or ''} for d in drivers]
+
     return render_template('rounds/index.html',
                            open_rounds=open_rounds,
                            closed_rounds=closed_rounds,
                            drivers=drivers,
+                           drivers_json=drivers_json,
                            tracks=tracks,
                            round_event_counts=round_event_counts,
                            all_categories=all_categories,
