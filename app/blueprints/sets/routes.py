@@ -266,6 +266,18 @@ def session_new(set_id):
             db.session.add(pit_stop_obj)
             db.session.flush()
 
+        # Guard against double-submit: if any session already exists for this
+        # set + date + event_type combination, abort and warn.
+        already_exists = Session.query.filter_by(
+            set_id=tire_set.id,
+            date=session_date,
+            event_type=event_type,
+        ).first()
+        if already_exists:
+            flash('Sessão já registrada para este set, data e tipo de evento. '
+                  'Nenhuma alteração foi feita.', 'warning')
+            return redirect(url_for('sets.index'))
+
         created = 0
         alerts = []
         pitstop_changes = []
