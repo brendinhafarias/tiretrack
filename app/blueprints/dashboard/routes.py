@@ -15,11 +15,12 @@ def index():
         teams = Team.query.filter_by(is_active=True).all()
         return render_template('dashboard/superadmin.html', teams=teams)
 
-    sort = request.args.get('sort', 'twi')  # 'twi' or 'km'
+    sort = request.args.get('sort', 'twi')  # 'twi', 'km', 'code'
     driver_id = request.args.get('driver_id', type=int)
     tire_types = request.args.getlist('tire_type')     # multi-select
     statuses = request.args.getlist('status')           # multi-select (includes 'trash')
     set_filter = request.args.get('set_filter', '')
+    categories = request.args.getlist('category')       # multi-select (driver category)
 
     query = Tire.query.filter_by(team_id=team_id)
 
@@ -32,6 +33,12 @@ def index():
     else:
         # Default: hide trash
         query = query.filter(Tire.status != 'trash')
+    if categories:
+        driver_ids_in_cat = [
+            d.id for d in Driver.query.filter_by(team_id=team_id)
+                                      .filter(Driver.category.in_(categories)).all()
+        ]
+        query = query.filter(Tire.driver_id.in_(driver_ids_in_cat))
 
     # legacy compat for sort links
     status_filter = statuses[0] if len(statuses) == 1 else ''
@@ -39,6 +46,8 @@ def index():
 
     if sort == 'km':
         query = query.order_by(Tire.total_km.desc())
+    elif sort == 'code':
+        query = query.order_by(Tire.code.asc())
     else:
         query = query.order_by(Tire.current_twi_pct.asc().nullslast())
 
@@ -91,6 +100,11 @@ def index():
     active_sets_list = TireSet.query.filter_by(team_id=team_id, status='active').order_by(TireSet.created_at.desc()).all()
     active_sets = len(active_sets_list)
 
+    all_categories = sorted(set(
+        d.category for d in Driver.query.filter_by(team_id=team_id)
+                                        .filter(Driver.category.isnot(None), Driver.category != '').all()
+    ))
+
     return render_template('dashboard/index.html',
                            tire_data=tire_data,
                            total_active=total_active,
@@ -104,4 +118,6 @@ def index():
                            driver_id=driver_id,
                            tire_types=tire_types,
                            statuses=statuses,
-                           set_filter=set_filter)
+                           set_filter=set_filter,
+                           categories=categories,
+                           all_categories=all_categories)

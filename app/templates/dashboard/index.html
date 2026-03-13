@@ -121,7 +121,31 @@
       </div>
     </div>
 
-    {% if driver_id or tire_types or statuses or set_filter %}
+    <!-- Category filter (checkbox dropdown) -->
+    {% if all_categories %}
+    <div class="relative">
+      <button type="button" @click="toggleFilter('category')"
+              class="flex items-center gap-2 bg-gray-700 border border-gray-600 text-white text-sm rounded-lg px-3 py-2 min-h-[44px] hover:bg-gray-600"
+              :class="openFilter === 'category' ? 'border-red-500' : ''">
+        Categoria
+        {% if categories %}<span class="bg-red-600 text-white text-xs rounded-full px-1.5 py-0.5 leading-none">{{ categories|length }}</span>{% endif %}
+        <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+      </button>
+      <div x-show="openFilter === 'category'" x-cloak
+           class="absolute top-full left-0 mt-1 bg-gray-800 border border-gray-600 rounded-xl shadow-xl p-3 space-y-2 w-48 z-30">
+        {% for val in all_categories %}
+        <label class="flex items-center gap-2 cursor-pointer hover:text-white text-sm text-gray-300">
+          <input type="checkbox" name="category" value="{{ val }}" {{ 'checked' if val in categories }}
+                 onchange="document.getElementById('filter-form').submit()"
+                 class="accent-red-500 w-4 h-4">
+          {{ val }}
+        </label>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    {% if driver_id or tire_types or statuses or set_filter or categories %}
     <a href="{{ url_for('dashboard.index') }}"
        class="bg-gray-600 hover:bg-gray-500 text-white text-sm rounded-lg px-3 py-2 flex items-center min-h-[44px]">
       ✕ Limpar
@@ -130,6 +154,10 @@
 
     <!-- Sort -->
     <div class="flex gap-1 ml-auto flex-shrink-0">
+      <button type="button" onclick="document.getElementById('sort-input').value='code'; document.getElementById('filter-form').submit()"
+              class="text-xs px-3 py-2 rounded-lg min-h-[44px] flex items-center {{ 'bg-red-600 text-white' if sort == 'code' else 'bg-gray-700 text-gray-300 hover:bg-gray-600' }}">
+        Cód↑
+      </button>
       <button type="button" onclick="document.getElementById('sort-input').value='twi'; document.getElementById('filter-form').submit()"
               class="text-xs px-3 py-2 rounded-lg min-h-[44px] flex items-center {{ 'bg-red-600 text-white' if sort == 'twi' else 'bg-gray-700 text-gray-300 hover:bg-gray-600' }}">
         TWI%↑
@@ -260,12 +288,6 @@
                  class="text-xs bg-gray-700 hover:bg-gray-600 text-gray-200 px-2 py-1.5 rounded-lg min-h-[32px] flex items-center" title="Ver histórico">
                 Ver
               </a>
-              {% if current_user.can_write %}
-              <a href="{{ url_for('tires.session_new', tire_id=t.id) }}"
-                 class="text-xs bg-red-700 hover:bg-red-600 text-white px-2 py-1.5 rounded-lg min-h-[32px] flex items-center" title="Nova medição">
-                +Sessão
-              </a>
-              {% endif %}
               {% if current_user.is_team_admin %}
               <form method="POST" action="{{ url_for('tires.delete', tire_id=t.id) }}"
                     onsubmit="return confirm('Apagar pneu {{ t.code }}? Esta ação não pode ser desfeita.')">
@@ -346,12 +368,6 @@
            class="flex-1 text-center text-sm bg-gray-700 hover:bg-gray-600 text-white py-2.5 rounded-lg min-h-[44px] flex items-center justify-center">
           Ver histórico
         </a>
-        {% if current_user.can_write %}
-        <a href="{{ url_for('tires.session_new', tire_id=t.id) }}"
-           class="flex-1 text-center text-sm bg-red-600 hover:bg-red-700 text-white py-2.5 rounded-lg min-h-[44px] flex items-center justify-center">
-          + Sessão
-        </a>
-        {% endif %}
         {% if current_user.is_team_admin %}
         <form method="POST" action="{{ url_for('tires.delete', tire_id=t.id) }}"
               onsubmit="return confirm('Apagar pneu {{ t.code }}? Esta ação não pode ser desfeita.')">
