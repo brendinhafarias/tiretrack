@@ -59,10 +59,26 @@ def main():
         if DRY_RUN:
             print('\n[DRY RUN] Nada foi apagado. Use --apply para aplicar.')
         else:
+            delete_ids = {s.id for s in to_delete}
+            affected_tire_ids = {s.tire_id for s in to_delete if s.tire_id}
+
             for s in to_delete:
                 db.session.delete(s)
+            db.session.flush()
+
+            # Recompute tire totals from remaining sessions
+            from app.models import Tire
+            for tid in affected_tire_ids:
+                tire = Tire.query.get(tid)
+                if not tire:
+                    continue
+                remaining = Session.query.filter_by(tire_id=tid).all()
+                tire.total_km   = round(sum(s.km_session or 0 for s in remaining), 3)
+                tire.total_laps = sum(s.laps or 0 for s in remaining)
+
             db.session.commit()
             print(f'\n[APLICADO] {len(to_delete)} sessões duplicadas removidas.')
+            print(f'Totais de {len(affected_tire_ids)} pneu(s) recalculados.')
 
 
 if __name__ == '__main__':
