@@ -15,10 +15,22 @@ _POS_ORDER = {'DE': 0, 'DD': 1, 'TE': 2, 'TD': 3}
 @login_required
 def index():
     team_id = current_user.team_id
-    open_rounds = Round.query.filter_by(team_id=team_id, status='open').order_by(Round.start_date.desc()).all()
-    closed_rounds = Round.query.filter_by(team_id=team_id, status='closed').order_by(Round.start_date.desc()).all()
-    drivers = Driver.query.filter_by(team_id=team_id, is_active=True).all()
+    driver_filter = request.args.get('driver_id', type=int)
+    category_filter = request.args.get('category', '')
+
+    drivers = Driver.query.filter_by(team_id=team_id, is_active=True).order_by(Driver.name).all()
+    all_categories = sorted(set(d.category for d in drivers if d.category))
     tracks = get_team_tracks(team_id)
+
+    base_q = Round.query.filter_by(team_id=team_id)
+    if driver_filter:
+        base_q = base_q.filter_by(driver_id=driver_filter)
+    elif category_filter:
+        cat_driver_ids = [d.id for d in drivers if d.category == category_filter]
+        base_q = base_q.filter(Round.driver_id.in_(cat_driver_ids))
+
+    open_rounds = base_q.filter_by(status='open').order_by(Round.start_date.desc()).all()
+    closed_rounds = base_q.filter_by(status='closed').order_by(Round.start_date.desc()).all()
 
     # Count distinct event groups per round (matches detail page logic)
     all_round_ids = [r.id for r in open_rounds + closed_rounds]
@@ -39,7 +51,10 @@ def index():
                            closed_rounds=closed_rounds,
                            drivers=drivers,
                            tracks=tracks,
-                           round_event_counts=round_event_counts)
+                           round_event_counts=round_event_counts,
+                           all_categories=all_categories,
+                           driver_filter=driver_filter,
+                           category_filter=category_filter)
 
 
 @rounds_bp.route('/new', methods=['POST'])
