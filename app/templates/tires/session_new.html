@@ -141,23 +141,23 @@
     <div class="bg-gray-800 rounded-xl p-5 border border-gray-700 space-y-4">
       <div>
         <h2 class="text-sm font-semibold text-gray-300 uppercase tracking-wide">Leituras TWI (mm) <span class="text-gray-500 font-normal normal-case">— opcional</span></h2>
-        <p class="text-xs text-gray-500 mt-1">Referência inicial: INT={{ '%.1f'|format(tire.twi_initial_int) }} | C-I={{ '%.1f'|format(tire.twi_initial_ci) }} | C-E={{ '%.1f'|format(tire.twi_initial_co) }} | EXT={{ '%.1f'|format(tire.twi_initial_ext) }}</p>
+        <p class="text-xs text-gray-500 mt-1">Referência inicial: EXT={{ '%.1f'|format(tire.twi_initial_ext) }} | C-E={{ '%.1f'|format(tire.twi_initial_co) }} | C-I={{ '%.1f'|format(tire.twi_initial_ci) }} | INT={{ '%.1f'|format(tire.twi_initial_int) }}</p>
       </div>
 
       <!-- Current reading reference -->
       <div class="grid grid-cols-4 gap-2 text-center">
-        <div class="text-xs text-gray-400">INT (Interno)</div>
-        <div class="text-xs text-gray-400">C-INT</div>
-        <div class="text-xs text-gray-400">C-EXT</div>
         <div class="text-xs text-gray-400">EXT (Externo)</div>
+        <div class="text-xs text-gray-400">C-EXT</div>
+        <div class="text-xs text-gray-400">C-INT</div>
+        <div class="text-xs text-gray-400">INT (Interno)</div>
       </div>
 
       <div class="grid grid-cols-4 gap-2">
         {% for fname, label, init_val, curr_val in [
-          ('twi_int', 'INT', tire.twi_initial_int, tire.current_twi_int),
-          ('twi_ci', 'C-I', tire.twi_initial_ci, tire.current_twi_ci),
+          ('twi_ext', 'EXT', tire.twi_initial_ext, tire.current_twi_ext),
           ('twi_co', 'C-E', tire.twi_initial_co, tire.current_twi_co),
-          ('twi_ext', 'EXT', tire.twi_initial_ext, tire.current_twi_ext)
+          ('twi_ci', 'C-I', tire.twi_initial_ci, tire.current_twi_ci),
+          ('twi_int', 'INT', tire.twi_initial_int, tire.current_twi_int)
         ] %}
         <div class="space-y-1">
           <input type="number" name="{{ fname }}" min="0" :max="twiMax" step="0.001" inputmode="decimal"

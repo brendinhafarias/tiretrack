@@ -148,10 +148,10 @@
       <th>Pos.</th>
       <th>Voltas</th>
       <th>Km Sess.</th>
-      <th>INT</th>
-      <th>C-I</th>
-      <th>C-E</th>
       <th>EXT</th>
+      <th>C-E</th>
+      <th>C-I</th>
+      <th>INT</th>
       <th>TWI%</th>
     </tr>
     {% for s in td.sessions %}
@@ -163,10 +163,10 @@
       <td>{{ s.position or '—' }}</td>
       <td>{{ s.laps }}</td>
       <td>{{ '%.1f'|format(s.km_session) }}</td>
-      <td>{{ '%.1f'|format(s.twi_int) }}</td>
-      <td>{{ '%.1f'|format(s.twi_ci) }}</td>
-      <td>{{ '%.1f'|format(s.twi_co) }}</td>
       <td>{{ '%.1f'|format(s.twi_ext) }}</td>
+      <td>{{ '%.1f'|format(s.twi_co) }}</td>
+      <td>{{ '%.1f'|format(s.twi_ci) }}</td>
+      <td>{{ '%.1f'|format(s.twi_int) }}</td>
       <td><span class="{{ 'twi-green' if p >= 70 else 'twi-yellow' if p >= 40 else 'twi-orange' if p >= 20 else 'twi-red' }}">{{ '%.0f'|format(p) }}%</span></td>
     </tr>
     {% endfor %}

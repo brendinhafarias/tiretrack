@@ -153,10 +153,10 @@
           <th class="px-4 py-3 text-left">Código</th>
           <th class="px-4 py-3 text-left">Posição</th>
           <th class="px-4 py-3 text-left">Set Ativo</th>
-          <th class="px-4 py-3 text-center">INT</th>
-          <th class="px-4 py-3 text-center">C-INT</th>
-          <th class="px-4 py-3 text-center">C-EXT</th>
           <th class="px-4 py-3 text-center">EXT</th>
+          <th class="px-4 py-3 text-center">C-EXT</th>
+          <th class="px-4 py-3 text-center">C-INT</th>
+          <th class="px-4 py-3 text-center">INT</th>
           <th class="px-4 py-3 text-left min-w-[120px]">TWI % Médio</th>
           <th class="px-4 py-3 text-left">Pistas</th>
           <th class="px-4 py-3 text-right">Km</th>
@@ -196,10 +196,10 @@
 
           <!-- TWI readings with color coding -->
           {% set twi_vals = [
-            (t.current_twi_int, t.twi_initial_int),
-            (t.current_twi_ci, t.twi_initial_ci),
+            (t.current_twi_ext, t.twi_initial_ext),
             (t.current_twi_co, t.twi_initial_co),
-            (t.current_twi_ext, t.twi_initial_ext)
+            (t.current_twi_ci, t.twi_initial_ci),
+            (t.current_twi_int, t.twi_initial_int)
           ] %}
           {% for curr, init in twi_vals %}
           {% set cp = ((curr / init) * 100) if (curr and init) else 100 %}
@@ -326,7 +326,7 @@
                style="width: {{ [pct, 100]|min }}%"></div>
         </div>
         <div class="grid grid-cols-4 gap-1 mt-2 text-center">
-          {% for label, curr, init in [('INT', t.current_twi_int, t.twi_initial_int), ('C-I', t.current_twi_ci, t.twi_initial_ci), ('C-E', t.current_twi_co, t.twi_initial_co), ('EXT', t.current_twi_ext, t.twi_initial_ext)] %}
+          {% for label, curr, init in [('EXT', t.current_twi_ext, t.twi_initial_ext), ('C-E', t.current_twi_co, t.twi_initial_co), ('C-I', t.current_twi_ci, t.twi_initial_ci), ('INT', t.current_twi_int, t.twi_initial_int)] %}
           {% set cp = ((curr / init) * 100) if (curr and init) else 100 %}
           <div>
             <div class="text-xs text-gray-500">{{ label }}</div>

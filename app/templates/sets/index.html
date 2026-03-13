@@ -33,11 +33,11 @@
     new Chart(canvas, {
       type: 'line',
       data: {
-        labels: ['INT', 'C-INT', 'C-EXT', 'EXT'],
+        labels: ['EXT', 'C-EXT', 'C-INT', 'INT'],
         datasets: [
           {
             label: 'Inicial',
-            data: [d.twi_initial_int, d.twi_initial_ci, d.twi_initial_co, d.twi_initial_ext],
+            data: [d.twi_initial_ext, d.twi_initial_co, d.twi_initial_ci, d.twi_initial_int],
             borderColor: '#6b7280',
             backgroundColor: 'transparent',
             borderDash: [5, 3],
@@ -47,7 +47,7 @@
           },
           {
             label: 'Atual',
-            data: [d.twi_int, d.twi_ci, d.twi_co, d.twi_ext],
+            data: [d.twi_ext, d.twi_co, d.twi_ci, d.twi_int],
             borderColor: d.current_twi_pct >= 70 ? '#16a34a' : d.current_twi_pct >= 40 ? '#ca8a04' : d.current_twi_pct >= 20 ? '#ea580c' : '#dc2626',
             backgroundColor: d.current_twi_pct >= 70 ? 'rgba(22,163,74,0.15)' : d.current_twi_pct >= 40 ? 'rgba(202,138,4,0.15)' : d.current_twi_pct >= 20 ? 'rgba(234,88,12,0.15)' : 'rgba(220,38,38,0.15)',
             fill: true,

@@ -89,13 +89,13 @@ def detail(tire_id):
     chart_profiles = [
         {
             'label': s.date.strftime('%d/%m/%y') + f' · {s.event_type_label}',
-            'values': [s.twi_int, s.twi_ci, s.twi_co, s.twi_ext]
+            'values': [s.twi_ext, s.twi_co, s.twi_ci, s.twi_int]
         }
         for s in profile_sessions
     ]
     chart_initial = [
-        tire.twi_initial_int, tire.twi_initial_ci,
-        tire.twi_initial_co, tire.twi_initial_ext
+        tire.twi_initial_ext, tire.twi_initial_co,
+        tire.twi_initial_ci, tire.twi_initial_int
     ]
 
     # Km by track
