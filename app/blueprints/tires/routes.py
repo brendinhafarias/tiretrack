@@ -416,7 +416,7 @@ def toggle_blocked(tire_id):
     tire = Tire.query.filter_by(id=tire_id, team_id=current_user.team_id).first_or_404()
     tire.status = 'available' if tire.status == 'blocked' else 'blocked'
     db.session.commit()
-    return jsonify({'blocked': tire.status == 'blocked'})
+    return jsonify({'blocked': tire.status == 'blocked', 'new_status': tire.status})
 
 
 @tires_bp.route('/<int:tire_id>/toggle-mounted', methods=['POST'])

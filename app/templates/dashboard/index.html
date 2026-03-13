@@ -281,7 +281,7 @@
 
           <!-- Status badge -->
           <td class="px-4 py-3 text-center">
-            <span class="text-xs px-2 py-1 rounded-full font-medium badge-{{ t.status }}">
+            <span data-status-badge="{{ t.id }}" class="text-xs px-2 py-1 rounded-full font-medium badge-{{ t.status }}">
               {{ {'available':'Disponível','mounted':'Em Set','blocked':'Bloqueado','trash':'Lixo'}.get(t.status, t.status) }}
             </span>
           </td>
@@ -360,7 +360,7 @@
             <span class="tag-next-round text-xs bg-green-900 text-green-300 border border-green-700 px-1.5 py-0.5 rounded-full font-medium {{ '' if t.is_next_round else 'hidden' }}">Próx. Etapa</span>
           </div>
         </div>
-        <span class="text-xs px-2 py-1 rounded-full font-medium badge-{{ t.status }}">
+        <span data-status-badge="{{ t.id }}" class="text-xs px-2 py-1 rounded-full font-medium badge-{{ t.status }}">
           {{ {'available':'Disponível','mounted':'Em Set','blocked':'Bloqueado','trash':'Lixo'}.get(t.status, t.status) }}
         </span>
       </div>
@@ -522,10 +522,14 @@ function toggleFlag(tireId, action) {
 
     if (action === 'toggle-blocked') {
       const active = data.blocked;
+      const newStatus = data.new_status;
+      const statusLabels = { available: 'Disponível', mounted: 'Em Set', blocked: 'Bloqueado', trash: 'Lixo' };
       tags.querySelectorAll('.tag-blocked').forEach(el => el.classList.toggle('hidden', !active));
+      document.querySelectorAll('[data-status-badge="' + tireId + '"]').forEach(el => {
+        el.className = el.className.replace(/badge-\w+/, 'badge-' + newStatus);
+        el.textContent = statusLabels[newStatus] || newStatus;
+      });
       btns.forEach(btn => {
-        btn.className = btn.className
-          .replace(/bg-red-800|bg-gray-700|border-red-600|border-gray-600|text-red-200|text-gray-400/g, '').trim();
         if (active) {
           btn.classList.add('bg-red-800', 'border-red-600', 'text-red-200');
           btn.classList.remove('bg-gray-700', 'border-gray-600', 'text-gray-400');
