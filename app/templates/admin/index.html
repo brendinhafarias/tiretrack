@@ -7,7 +7,9 @@
 {% endblock %}
 
 {% block content %}
-<div x-data="{ tab: 'users' }" class="space-y-5">
+<div x-data="{ tab: 'users' }"
+     x-init="tab = new URLSearchParams(window.location.search).get('tab') || 'users'"
+     class="space-y-5">
   <h1 class="text-2xl font-bold text-white">Configurações da Equipe</h1>
   <div class="text-sm text-gray-400 bg-gray-800 border border-gray-700 rounded-xl px-4 py-2 inline-block">
     <strong class="text-white">{{ team.name }}</strong> — {{ team.slug }}

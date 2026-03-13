@@ -117,7 +117,7 @@ def user_new():
     db.session.add(user)
     db.session.commit()
     flash(f'Usuário {username} criado!', 'success')
-    return redirect(url_for('admin.index'))
+    return redirect(url_for('admin.index', tab='users'))
 
 
 @admin_bp.route('/users/<int:user_id>/toggle', methods=['POST'])
@@ -130,7 +130,7 @@ def user_toggle(user_id):
     user.is_active = not user.is_active
     db.session.commit()
     flash(f'Usuário {user.username} {"ativado" if user.is_active else "desativado"}.', 'success')
-    return redirect(url_for('admin.index'))
+    return redirect(url_for('admin.index', tab='users'))
 
 
 # ---- Drivers ----
@@ -156,7 +156,7 @@ def driver_new():
     db.session.add(driver)
     db.session.commit()
     flash(f'Piloto {name} cadastrado!', 'success')
-    return redirect(url_for('admin.index'))
+    return redirect(url_for('admin.index', tab='drivers'))
 
 
 @admin_bp.route('/drivers/<int:driver_id>/toggle', methods=['POST'])
@@ -169,7 +169,7 @@ def driver_toggle(driver_id):
     driver.is_active = not driver.is_active
     db.session.commit()
     flash(f'Piloto {driver.name} {"ativado" if driver.is_active else "desativado"}.', 'success')
-    return redirect(url_for('admin.index'))
+    return redirect(url_for('admin.index', tab='drivers'))
 
 
 # ---- Tracks ----
@@ -202,4 +202,4 @@ def track_new():
     db.session.add(track)
     db.session.commit()
     flash(f'Pista {name} cadastrada!', 'success')
-    return redirect(url_for('admin.index'))
+    return redirect(url_for('admin.index', tab='tracks'))
