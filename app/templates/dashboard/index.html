@@ -212,6 +212,11 @@
               </span>
             </div>
             {% endif %}
+            <div class="flex flex-wrap gap-1 mt-1" id="tags-{{ t.id }}">
+              <span class="tag-blocked text-xs bg-red-900 text-red-300 border border-red-700 px-1.5 py-0.5 rounded-full font-medium {{ '' if t.status == 'blocked' else 'hidden' }}">CBA</span>
+              <span class="tag-mounted text-xs bg-orange-900 text-orange-300 border border-orange-700 px-1.5 py-0.5 rounded-full font-medium {{ '' if t.is_mounted else 'hidden' }}">Montado</span>
+              <span class="tag-next-round text-xs bg-green-900 text-green-300 border border-green-700 px-1.5 py-0.5 rounded-full font-medium {{ '' if t.is_next_round else 'hidden' }}">Próx. Etapa</span>
+            </div>
           </td>
           <td class="px-4 py-3 text-gray-300 font-mono">{{ item.position or '—' }}</td>
           <td class="px-4 py-3">
@@ -283,7 +288,27 @@
 
           <!-- Actions -->
           <td class="px-4 py-3">
-            <div class="flex justify-end gap-1">
+            <div class="flex justify-end gap-1 flex-wrap">
+              {% if current_user.can_write %}
+              <button onclick="toggleFlag({{ t.id }}, 'toggle-blocked')"
+                      data-tire="{{ t.id }}" data-action="toggle-blocked"
+                      title="{{ 'Desbloquear (CBA)' if t.status == 'blocked' else 'Bloquear (CBA)' }}"
+                      class="text-xs px-2 py-1.5 rounded-lg min-h-[32px] flex items-center transition-colors border {{ 'bg-red-800 border-red-600 text-red-200' if t.status == 'blocked' else 'bg-gray-700 border-gray-600 text-gray-400 hover:bg-gray-600' }}">
+                CBA
+              </button>
+              <button onclick="toggleFlag({{ t.id }}, 'toggle-mounted')"
+                      data-tire="{{ t.id }}" data-action="toggle-mounted"
+                      title="{{ 'Desmarcar Montado' if t.is_mounted else 'Marcar Montado' }}"
+                      class="text-xs px-2 py-1.5 rounded-lg min-h-[32px] flex items-center transition-colors border {{ 'bg-orange-800 border-orange-600 text-orange-200' if t.is_mounted else 'bg-gray-700 border-gray-600 text-gray-400 hover:bg-gray-600' }}">
+                Mont.
+              </button>
+              <button onclick="toggleFlag({{ t.id }}, 'toggle-next-round')"
+                      data-tire="{{ t.id }}" data-action="toggle-next-round"
+                      title="{{ 'Desmarcar Próxima Etapa' if t.is_next_round else 'Marcar Próxima Etapa' }}"
+                      class="text-xs px-2 py-1.5 rounded-lg min-h-[32px] flex items-center transition-colors border {{ 'bg-green-800 border-green-600 text-green-200' if t.is_next_round else 'bg-gray-700 border-gray-600 text-gray-400 hover:bg-gray-600' }}">
+                Próx.
+              </button>
+              {% endif %}
               <a href="{{ url_for('tires.detail', tire_id=t.id) }}"
                  class="text-xs bg-gray-700 hover:bg-gray-600 text-gray-200 px-2 py-1.5 rounded-lg min-h-[32px] flex items-center" title="Ver histórico">
                 Ver
@@ -329,6 +354,11 @@
             <span class="text-xs bg-amber-900/60 text-amber-300 border border-amber-700 px-1.5 py-0.5 rounded-full">⚠ Sem TWI na última saída</span>
           </div>
           {% endif %}
+          <div class="flex flex-wrap gap-1 mt-1" id="tags-{{ t.id }}">
+            <span class="tag-blocked text-xs bg-red-900 text-red-300 border border-red-700 px-1.5 py-0.5 rounded-full font-medium {{ '' if t.status == 'blocked' else 'hidden' }}">CBA</span>
+            <span class="tag-mounted text-xs bg-orange-900 text-orange-300 border border-orange-700 px-1.5 py-0.5 rounded-full font-medium {{ '' if t.is_mounted else 'hidden' }}">Montado</span>
+            <span class="tag-next-round text-xs bg-green-900 text-green-300 border border-green-700 px-1.5 py-0.5 rounded-full font-medium {{ '' if t.is_next_round else 'hidden' }}">Próx. Etapa</span>
+          </div>
         </div>
         <span class="text-xs px-2 py-1 rounded-full font-medium badge-{{ t.status }}">
           {{ {'available':'Disponível','mounted':'Em Set','blocked':'Bloqueado','trash':'Lixo'}.get(t.status, t.status) }}
@@ -363,6 +393,25 @@
         <span>{{ t.driver.name if t.driver else '—' }}</span>
       </div>
 
+      {% if current_user.can_write %}
+      <div class="flex gap-2 mb-2">
+        <button onclick="toggleFlag({{ t.id }}, 'toggle-blocked')"
+                data-tire="{{ t.id }}" data-action="toggle-blocked"
+                class="flex-1 text-xs py-2.5 rounded-lg min-h-[44px] flex items-center justify-center transition-colors border {{ 'bg-red-800 border-red-600 text-red-200' if t.status == 'blocked' else 'bg-gray-700 border-gray-600 text-gray-400' }}">
+          CBA
+        </button>
+        <button onclick="toggleFlag({{ t.id }}, 'toggle-mounted')"
+                data-tire="{{ t.id }}" data-action="toggle-mounted"
+                class="flex-1 text-xs py-2.5 rounded-lg min-h-[44px] flex items-center justify-center transition-colors border {{ 'bg-orange-800 border-orange-600 text-orange-200' if t.is_mounted else 'bg-gray-700 border-gray-600 text-gray-400' }}">
+          Montado
+        </button>
+        <button onclick="toggleFlag({{ t.id }}, 'toggle-next-round')"
+                data-tire="{{ t.id }}" data-action="toggle-next-round"
+                class="flex-1 text-xs py-2.5 rounded-lg min-h-[44px] flex items-center justify-center transition-colors border {{ 'bg-green-800 border-green-600 text-green-200' if t.is_next_round else 'bg-gray-700 border-gray-600 text-gray-400' }}">
+          Próx. Etapa
+        </button>
+      </div>
+      {% endif %}
       <div class="flex gap-2">
         <a href="{{ url_for('tires.detail', tire_id=t.id) }}"
            class="flex-1 text-center text-sm bg-gray-700 hover:bg-gray-600 text-white py-2.5 rounded-lg min-h-[44px] flex items-center justify-center">
@@ -457,4 +506,60 @@
 
 </div>
 {% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+function toggleFlag(tireId, action) {
+  fetch('/tires/' + tireId + '/' + action, {
+    method: 'POST',
+    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+  })
+  .then(r => r.json())
+  .then(data => {
+    const tags = document.getElementById('tags-' + tireId);
+    const btns = document.querySelectorAll('[data-tire="' + tireId + '"][data-action="' + action + '"]');
+
+    if (action === 'toggle-blocked') {
+      const active = data.blocked;
+      tags.querySelectorAll('.tag-blocked').forEach(el => el.classList.toggle('hidden', !active));
+      btns.forEach(btn => {
+        btn.className = btn.className
+          .replace(/bg-red-800|bg-gray-700|border-red-600|border-gray-600|text-red-200|text-gray-400/g, '').trim();
+        if (active) {
+          btn.classList.add('bg-red-800', 'border-red-600', 'text-red-200');
+          btn.classList.remove('bg-gray-700', 'border-gray-600', 'text-gray-400');
+        } else {
+          btn.classList.add('bg-gray-700', 'border-gray-600', 'text-gray-400');
+          btn.classList.remove('bg-red-800', 'border-red-600', 'text-red-200');
+        }
+      });
+    } else if (action === 'toggle-mounted') {
+      const active = data.is_mounted;
+      tags.querySelectorAll('.tag-mounted').forEach(el => el.classList.toggle('hidden', !active));
+      btns.forEach(btn => {
+        if (active) {
+          btn.classList.add('bg-orange-800', 'border-orange-600', 'text-orange-200');
+          btn.classList.remove('bg-gray-700', 'border-gray-600', 'text-gray-400');
+        } else {
+          btn.classList.add('bg-gray-700', 'border-gray-600', 'text-gray-400');
+          btn.classList.remove('bg-orange-800', 'border-orange-600', 'text-orange-200');
+        }
+      });
+    } else if (action === 'toggle-next-round') {
+      const active = data.is_next_round;
+      tags.querySelectorAll('.tag-next-round').forEach(el => el.classList.toggle('hidden', !active));
+      btns.forEach(btn => {
+        if (active) {
+          btn.classList.add('bg-green-800', 'border-green-600', 'text-green-200');
+          btn.classList.remove('bg-gray-700', 'border-gray-600', 'text-gray-400');
+        } else {
+          btn.classList.add('bg-gray-700', 'border-gray-600', 'text-gray-400');
+          btn.classList.remove('bg-green-800', 'border-green-600', 'text-green-200');
+        }
+      });
+    }
+  });
+}
+</script>
 {% endblock %}

@@ -400,15 +400,19 @@
           {% for td in tire_sessions %}
           {% set t = td.tire %}
           {% set pct = t.current_twi_pct or 100 %}
-          <label class="flex items-center gap-3 bg-gray-900 rounded-xl px-4 py-3 cursor-pointer hover:bg-gray-800 border border-gray-700 hover:border-gray-500 transition-colors">
+          {% set auto_keep = t.status == 'blocked' or t.is_next_round %}
+          <label class="flex items-center gap-3 bg-gray-900 rounded-xl px-4 py-3 cursor-pointer hover:bg-gray-800 border {{ 'border-green-800' if auto_keep else 'border-gray-700' }} hover:border-gray-500 transition-colors">
             <input type="checkbox" name="keep_tire_ids" value="{{ t.id }}"
+                   {{ 'checked' if auto_keep else '' }}
                    class="accent-green-500 w-4 h-4 flex-shrink-0">
             <div class="flex-1 min-w-0">
-              <div class="flex items-center gap-2">
+              <div class="flex items-center gap-2 flex-wrap">
                 <span class="font-mono font-bold text-white">{{ t.code }}</span>
                 <span class="text-xs px-1.5 py-0.5 rounded {{ 'bg-blue-900 text-blue-300' if t.tire_type == 'wet' else 'bg-gray-700 text-gray-400' }}">
                   {{ 'Wet' if t.tire_type == 'wet' else 'Slick' }}
                 </span>
+                {% if t.status == 'blocked' %}<span class="text-xs bg-red-900 text-red-300 border border-red-700 px-1.5 py-0.5 rounded-full">CBA</span>{% endif %}
+                {% if t.is_next_round %}<span class="text-xs bg-green-900 text-green-300 border border-green-700 px-1.5 py-0.5 rounded-full">Próx. Etapa</span>{% endif %}
               </div>
               <div class="mt-1 flex items-center gap-2">
                 <div class="flex-1 bg-gray-700 rounded-full h-1.5">

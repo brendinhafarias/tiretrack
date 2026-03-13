@@ -53,6 +53,12 @@ def create_app(config_name='default'):
             if 'round_id' not in tire_cols:
                 conn.execute(text('ALTER TABLE tires ADD COLUMN round_id INTEGER REFERENCES rounds(id)'))
                 conn.commit()
+            if 'is_mounted' not in tire_cols:
+                conn.execute(text('ALTER TABLE tires ADD COLUMN is_mounted BOOLEAN NOT NULL DEFAULT 0'))
+                conn.commit()
+            if 'is_next_round' not in tire_cols:
+                conn.execute(text('ALTER TABLE tires ADD COLUMN is_next_round BOOLEAN NOT NULL DEFAULT 0'))
+                conn.commit()
 
             # Make Session TWI columns nullable (allow sessions without TWI readings)
             session_cols = {c['name']: c for c in insp.get_columns('sessions')}

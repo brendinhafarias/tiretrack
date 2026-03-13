@@ -151,6 +151,9 @@ class Tire(db.Model):
     current_twi_avg = db.Column(db.Float)
     current_twi_pct = db.Column(db.Float)  # average % remaining
 
+    is_mounted = db.Column(db.Boolean, default=False, nullable=False, server_default='0')
+    is_next_round = db.Column(db.Boolean, default=False, nullable=False, server_default='0')
+
     notes = db.Column(db.Text)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 

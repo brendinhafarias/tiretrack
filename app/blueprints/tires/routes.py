@@ -406,3 +406,36 @@ def change_status(tire_id):
         flash(f'Status do pneu {tire.code} atualizado para {new_status}.', 'success')
 
     return redirect(url_for('tires.detail', tire_id=tire_id))
+
+
+@tires_bp.route('/<int:tire_id>/toggle-blocked', methods=['POST'])
+@login_required
+@require_write
+def toggle_blocked(tire_id):
+    from flask import jsonify
+    tire = Tire.query.filter_by(id=tire_id, team_id=current_user.team_id).first_or_404()
+    tire.status = 'available' if tire.status == 'blocked' else 'blocked'
+    db.session.commit()
+    return jsonify({'blocked': tire.status == 'blocked'})
+
+
+@tires_bp.route('/<int:tire_id>/toggle-mounted', methods=['POST'])
+@login_required
+@require_write
+def toggle_mounted(tire_id):
+    from flask import jsonify
+    tire = Tire.query.filter_by(id=tire_id, team_id=current_user.team_id).first_or_404()
+    tire.is_mounted = not tire.is_mounted
+    db.session.commit()
+    return jsonify({'is_mounted': tire.is_mounted})
+
+
+@tires_bp.route('/<int:tire_id>/toggle-next-round', methods=['POST'])
+@login_required
+@require_write
+def toggle_next_round(tire_id):
+    from flask import jsonify
+    tire = Tire.query.filter_by(id=tire_id, team_id=current_user.team_id).first_or_404()
+    tire.is_next_round = not tire.is_next_round
+    db.session.commit()
+    return jsonify({'is_next_round': tire.is_next_round})
