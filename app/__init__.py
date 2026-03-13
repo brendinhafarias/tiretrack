@@ -42,6 +42,9 @@ def create_app(config_name='default'):
     from app.blueprints.api import api_bp
     app.register_blueprint(api_bp)
 
+    from app.blueprints.charts import charts_bp
+    app.register_blueprint(charts_bp)
+
     # Auto-create new tables in dev (safe — won't touch existing tables)
     with app.app_context():
         db.create_all()

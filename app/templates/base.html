@@ -143,6 +143,13 @@
         </svg>
         <span x-show="sidebarOpen">Etapas</span>
       </a>
+      <a href="{{ url_for('charts.index') }}"
+         class="sidebar-link {{ 'active' if request.endpoint and request.endpoint.startswith('charts') else 'text-gray-300' }}">
+        <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"/>
+        </svg>
+        <span x-show="sidebarOpen">Gráficos</span>
+      </a>
       {% if current_user.is_team_admin %}
       <a href="{{ url_for('admin.index') }}"
          class="sidebar-link {{ 'active' if request.endpoint and request.endpoint.startswith('admin') else 'text-gray-300' }}">
