@@ -4,7 +4,7 @@ from datetime import date
 from flask import render_template, redirect, url_for, flash, request
 from flask_login import login_required, current_user
 from app.blueprints.rounds import rounds_bp
-from app.models import Round, Session, Tire, Driver
+from app.models import Round, Session, Tire, Driver, PitStop, PitStopChange
 from app.extensions import db
 from app.utils import get_team_tracks, require_write, calc_twi
 
@@ -102,6 +102,15 @@ def detail(round_id):
             }
             for s in grp_sorted
         ]
+        pit_stop = PitStop.query.filter_by(
+            set_id=set_id,
+            date=date.fromisoformat(date_iso),
+            event_type=etype,
+            team_id=current_user.team_id,
+        ).first()
+        pit_stop_info = {'id': pit_stop.id, 'lap_stop': pit_stop.lap_stop} if pit_stop else None
+
+        session_ids_str = ','.join(str(s.id) for s in grp_sorted)
         event_groups.append({
             'is_set': True,
             'tire_set': first.tire_set,
@@ -112,9 +121,9 @@ def detail(round_id):
             'laps': first.laps,
             'km_session': first.km_session,
             'sessions': grp_sorted,
-            'session_ids': ','.join(str(s.id) for s in grp_sorted),
+            'session_ids': session_ids_str,
             'edit_data': json.dumps({
-                'session_ids': ','.join(str(s.id) for s in grp_sorted),
+                'session_ids': session_ids_str,
                 'round_id': round_id,
                 'date': first.date.isoformat(),
                 'event_type': first.event_type,
@@ -123,6 +132,7 @@ def detail(round_id):
                 'is_set': True,
                 'label': first.tire_set.name if first.tire_set else '—',
                 'positions': positions_data,
+                'pit_stop': pit_stop_info,
             }),
         })
 
@@ -243,8 +253,104 @@ def session_group_edit(round_id):
                     tire.update_current_twi(twi_data['twi_int'], twi_data['twi_ci'],
                                             twi_data['twi_co'], twi_data['twi_ext'])
 
+    # Update associated pit stop if lap_stop provided
+    first_s = sessions[0]
+    if first_s.set_id:
+        pit_stop = PitStop.query.filter_by(
+            set_id=first_s.set_id,
+            date=first_s.date,
+            event_type=first_s.event_type,
+            team_id=current_user.team_id,
+        ).first()
+        if pit_stop:
+            lap_stop_raw = request.form.get('lap_stop', '').strip()
+            if lap_stop_raw:
+                pit_stop.lap_stop = int(lap_stop_raw)
+            if date_raw:
+                pit_stop.date = date.fromisoformat(date_raw)
+            if new_event_type:
+                pit_stop.event_type = new_event_type
+
     db.session.commit()
     flash('Sessão atualizada.', 'success')
+    return redirect(url_for('rounds.detail', round_id=round_id))
+
+
+@rounds_bp.route('/<int:round_id>/sessions/group-delete', methods=['POST'])
+@login_required
+@require_write
+def session_group_delete(round_id):
+    from app.models import Session as SessionModel
+    Round.query.filter_by(id=round_id, team_id=current_user.team_id).first_or_404()
+
+    session_ids_raw = request.form.get('session_ids', '')
+    try:
+        session_ids = [int(x) for x in session_ids_raw.split(',') if x.strip()]
+    except ValueError:
+        flash('Dados inválidos.', 'error')
+        return redirect(url_for('rounds.detail', round_id=round_id))
+
+    sessions = SessionModel.query.filter(
+        SessionModel.id.in_(session_ids),
+        SessionModel.round_id == round_id,
+        SessionModel.team_id == current_user.team_id
+    ).all()
+
+    if not sessions:
+        flash('Sessões não encontradas.', 'error')
+        return redirect(url_for('rounds.detail', round_id=round_id))
+
+    # Update tire totals and revert TWI
+    for s in sessions:
+        tire = s.tire
+        if tire:
+            tire.total_km = max(0, round((tire.total_km or 0) - (s.km_session or 0), 3))
+            tire.total_laps = max(0, (tire.total_laps or 0) - (s.laps or 0))
+
+    # Revert TWI to most recent remaining session per tire
+    affected_tire_ids = {s.tire_id for s in sessions if s.tire_id}
+    for tid in affected_tire_ids:
+        tire = Tire.query.get(tid)
+        if not tire:
+            continue
+        latest = SessionModel.query.filter(
+            SessionModel.tire_id == tid,
+            SessionModel.twi_avg.isnot(None),
+            ~SessionModel.id.in_(session_ids)
+        ).order_by(SessionModel.date.desc(), SessionModel.id.desc()).first()
+        if latest:
+            tire.update_current_twi(latest.twi_int, latest.twi_ci,
+                                    latest.twi_co, latest.twi_ext)
+        else:
+            # No remaining sessions — reset to initial values
+            tire.current_twi_int = tire.twi_initial_int
+            tire.current_twi_ci  = tire.twi_initial_ci
+            tire.current_twi_co  = tire.twi_initial_co
+            tire.current_twi_ext = tire.twi_initial_ext
+            inits = [tire.twi_initial_int, tire.twi_initial_ci,
+                     tire.twi_initial_co, tire.twi_initial_ext]
+            tire.current_twi_avg = round(sum(inits) / 4, 2) if all(inits) else None
+            tire.current_twi_pct = 100.0
+
+    # Delete associated pit stop (and its changes) if any
+    first_s = sessions[0]
+    if first_s.set_id:
+        pit_stop = PitStop.query.filter_by(
+            set_id=first_s.set_id,
+            date=first_s.date,
+            event_type=first_s.event_type,
+            team_id=current_user.team_id,
+        ).first()
+        if pit_stop:
+            for change in pit_stop.changes:
+                db.session.delete(change)
+            db.session.delete(pit_stop)
+
+    for s in sessions:
+        db.session.delete(s)
+
+    db.session.commit()
+    flash('Sessão apagada.', 'success')
     return redirect(url_for('rounds.detail', round_id=round_id))
 
 
