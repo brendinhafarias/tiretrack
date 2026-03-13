@@ -209,9 +209,18 @@ def detail(round_id):
     event_laps = sum(eg['laps'] for eg in event_groups)
     event_count = len(event_groups)
 
+    # Extra tires to show in close modal: blocked or next_round but not used this round
+    round_tire_id_set = set(tire_sessions.keys())
+    extra_keep_tires = Tire.query.filter(
+        Tire.team_id == current_user.team_id,
+        db.or_(Tire.status == 'blocked', Tire.is_next_round == True),
+        ~Tire.id.in_(round_tire_id_set) if round_tire_id_set else db.true()
+    ).order_by(Tire.code).all()
+
     return render_template('rounds/detail.html',
                            rnd=rnd,
                            tire_sessions=list(tire_sessions.values()),
+                           extra_keep_tires=extra_keep_tires,
                            event_groups=event_groups,
                            event_km=event_km,
                            event_laps=event_laps,
@@ -398,12 +407,23 @@ def close(round_id):
         round_id=round_id, team_id=current_user.team_id
     ).distinct().all()]
 
+    # Extra tires shown in modal: blocked or next_round but not used this round
+    extra_tires = Tire.query.filter(
+        Tire.team_id == current_user.team_id,
+        db.or_(Tire.status == 'blocked', Tire.is_next_round == True),
+        ~Tire.id.in_(round_tire_ids) if round_tire_ids else db.true()
+    ).all()
+    extra_tire_ids = [t.id for t in extra_tires]
+
+    # All tire IDs subject to keep/discard decision
+    all_candidate_ids = list(set(round_tire_ids + extra_tire_ids))
+
     # IDs the user wants to KEEP for next round
     keep_ids = [int(x) for x in request.form.getlist('keep_tire_ids')]
 
     # Mark non-kept tires as trash
     discarded = 0
-    for tid in round_tire_ids:
+    for tid in all_candidate_ids:
         if tid not in keep_ids:
             tire = Tire.query.filter_by(id=tid, team_id=current_user.team_id).first()
             if tire and tire.status != 'trash':
